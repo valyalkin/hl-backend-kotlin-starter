@@ -1,0 +1,84 @@
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when its first story starts (via build's sprint sync)
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; the status view surfaces open ones
+generated: 09-09-2026 12:00
+last_updated: 09-09-2026 15:47
+project: hl-backend-kotlin-starter
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+development_status:
+  epic-1: in-progress
+  1-1-gradle-build-skeleton-with-a-version-catalog: review
+  1-2-format-and-lint-enforced-in-the-build: backlog
+  1-3-concern-package-layout-and-a-bootable-application: backlog
+  1-4-compose-stack-for-local-dependencies: backlog
+  1-5-postgres-datasource-and-flyway-configured-from-the-environme: backlog
+  1-6-redis-connection-and-readiness-gating: backlog
+  1-7-run-the-service-locally-on-the-local-profile: backlog
+  1-8-document-the-local-development-loop: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-widget-domain-model-jpa-entity-and-first-migration: backlog
+  2-2-shared-testcontainers-base-class-and-a-persistence-integrati: backlog
+  2-3-rfc-7807-error-contract-and-the-global-exception-handler: backlog
+  2-4-widget-service-operations: backlog
+  2-5-widget-rest-endpoints-and-dtos: backlog
+  2-6-request-validation-with-field-level-errors: backlog
+  2-7-redis-cache-aside-on-read-by-id: backlog
+  2-8-cache-behavior-integration-test: backlog
+  2-9-example-slice-coverage-at-both-levels: backlog
+  2-10-served-openapi-and-local-only-swagger-ui: backlog
+  2-11-add-a-rest-resource-guide-and-example-slice-removal: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-prometheus-metrics-endpoint: backlog
+  3-2-otlp-trace-export-no-op-when-unconfigured: backlog
+  3-3-structured-json-logging-with-trace-correlation: backlog
+  3-4-graceful-shutdown-on-sigterm: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-image-built-via-bootbuildimage: backlog
+  4-2-ci-builds-and-tests-every-pull-request: backlog
+  4-3-ci-publishes-the-image-on-push-to-main: backlog
+  4-4-kubernetes-runtime-contract-verified-locally: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-the-four-parameters-each-with-one-documented-home: backlog
+  5-2-generator-explicitly-deferred-seam-documented: backlog
+  5-3-changing-only-the-four-parameters-yields-a-working-service: backlog
+  5-4-inactive-fail-safe-oauth2-resource-server-auth-seam: backlog
+  5-5-auth-seam-documentation: backlog
+  5-6-readme-covers-the-five-essential-tasks: backlog
+  epic-5-retrospective: optional
