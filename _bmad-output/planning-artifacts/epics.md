@@ -1,5 +1,5 @@
 ---
-stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics"]
+stepsCompleted: ["step-01-validate-prerequisites", "step-02-design-epics", "step-03-create-stories", "step-04-final-validation"]
 inputDocuments:
   - "_bmad-output/planning-artifacts/prds/prd-hl-backend-kotlin-starter-2026-09-07/prd.md"
   - "_bmad-output/planning-artifacts/prds/prd-hl-backend-kotlin-starter-2026-09-07/addendum.md"
@@ -657,9 +657,9 @@ So that the surface is machine-readable everywhere without exposing an interacti
 **When** I open Swagger UI
 **Then** it is served; on every other profile it is disabled (`springdoc.swagger-ui.enabled`).
 
-**Given** a second resource added per the Story 2.11 guide
+**Given** an additional annotated `@RestController` mapping (e.g. a throwaway test resource)
 **When** the service starts
-**Then** it appears in the OpenAPI document with no extra wiring.
+**Then** it appears in the OpenAPI document with no springdoc configuration change.
 
 ### Story 2.11: "Add a REST resource" guide and Example Slice removal
 
