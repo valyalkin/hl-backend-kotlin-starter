@@ -63,6 +63,28 @@ Greenfield — no existing source or build files; nothing to preserve.
 - Given `src/main` and `src/test`, when the build compiles them, then only `.kt` sources exist, the compiler runs `-Xjsr305=strict`, and any compiler warning fails the build.
 - Given `./gradlew build` completes, when `build/libs/` is inspected, then a runnable Spring Boot jar is produced and `java -jar` on it starts a Spring context with no stack trace.
 
+### Review Findings
+
+Ad hoc code review (2026-09-09), 4 layers — blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor. Diff `f1e22a4..1b21d29`. edge-case-hunter and verification-gap returned no findings.
+
+- [x] [Review][Decision→Patch] Smoke test `StarterApplicationTests` matched neither AD-21 test shape (named `…Tests`, booted `@SpringBootTest` with no `@Tag`). Resolved: renamed to `StarterApplicationIT` + `@Tag("integration")`, forward-consistent with AD-21's integration shape. [src/test/kotlin/com/hl/service/StarterApplicationIT.kt:9]
+- [x] [Review][Patch] JUnit `@Test` written fully-qualified (`@org.junit.jupiter.api.Test`) instead of imported. Resolved: `import org.junit.jupiter.api.Test` + `@Test`. [src/test/kotlin/com/hl/service/StarterApplicationIT.kt:10]
+- [x] [Review][Patch] `spotless`/`ktlint` catalog entries had no deferral note like `springdoc`'s. Resolved: added `# spotless/ktlint: pinned here now, wired into the build in Story 1.2.` [gradle/libs.versions.toml:10]
+- [x] [Review][Defer] No README anywhere in the repo after the build system is introduced — no `./gradlew build` / `bootRun` steps, no JDK 25 / foojay auto-provision note [repo root] — deferred: owned by Story 1.8 (Document the local development loop); not caused by this change
+- [x] [Review][Defer] No CI runs `./gradlew build` on push/PR and `gradle-wrapper.jar` itself is unverified (only `distributionSha256Sum` is pinned) [.github/workflows/] — deferred: owned by Epic 4 (Story 4.2 CI + Gradle `wrapper-validation-action`); not caused by this change
+
+**Rejected**
+
+- [blind-hunter] No `gradle.properties` (daemon JVM args, parallel / build-cache / configuration-cache) — low: `./gradlew build` verified green without it, no defect met in everyday use, fix adds a new multi-setting file. Reasonable later enhancement, not a review defect.
+- [blind-hunter] No `.gitattributes` (`gradlew` CRLF corruption on Windows `core.autocrlf=true`) — low: epic NFR scopes platforms to Linux + macOS only. Already rejected in Pass 1 (row 9).
+- [blind-hunter] `.gitignore` omits `.env` / `application-local.*` / `*.log` / IDE metadata — false for the first two: epic context has `.env` (image tags) and `application-local.yaml` (throwaway creds) committed by design, so ignoring them would be wrong; `*.log` / `bin/` / `out/` / `.vscode/` are speculative and were rejected in Pass 1 (row 4).
+- [blind-hunter] No `.editorconfig` for ktlint rules — false / out of scope: spec Boundaries explicitly defer `.editorconfig` to Story 1.2.
+- [blind-hunter] No `src/main/resources/application.yaml` / `spring.application.name` — false / out of scope: `contextLoads()` boots green without it; config files are owned by Stories 1.3 / 1.5 / 1.7.
+- [blind-hunter] JUnit not surfaced through the version catalog — false: JUnit is Spring Boot BOM-managed, so a catalog version literal would violate the "no version literal for BOM-managed deps" constraint.
+- [blind-hunter] `@SpringBootApplication` scans `com.hl.service.*`, narrower than `group = "com.hl"` — false: all seven concern packages live under `com.hl.service` by invariant; `group` is the artifact coordinate, not a scan root.
+- [blind-hunter] Only `mavenCentral()`, no Spring milestone repo; `allWarningsAsErrors` makes future deprecations fatal — false: Boot 4.1.1 resolves from Central (build verified green); `allWarningsAsErrors` is a frozen spec constraint with a documented override path in Design Notes.
+- [acceptance-auditor] Tasks & Acceptance line for `build.gradle.kts` still names a `mavenCentral()` repo block the shipped file (correctly) omits — real spec drift from Pass 1 patch #6, but the only fix edits the spec under review; recorded here as spec hygiene, not a code finding.
+
 ## Implementation Notes
 
 - All six files created as specced. Build plugins applied via `alias(libs.plugins.*)`; BOM via `platform(SpringBootPlugin.BOM_COORDINATES)`; no `io.spring.dependency-management`.
