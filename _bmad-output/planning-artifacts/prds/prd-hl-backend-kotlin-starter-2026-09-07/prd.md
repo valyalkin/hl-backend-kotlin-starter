@@ -2,7 +2,7 @@
 title: "PRD: Spring Boot Kotlin Starter Service"
 status: final
 created: 2026-09-07
-updated: 2026-09-07
+updated: 2026-09-09
 ---
 
 # PRD: Spring Boot Kotlin Starter Service
@@ -69,9 +69,10 @@ Downstream workflows and readers use these terms exactly. FRs, UJs, and SMs use 
 - **Compose Stack** — the `docker compose` definition that starts the service's local dependencies for development. Postgres and Redis only in v1; no OpenTelemetry collector (deferred — §6.2).
 - **Integration Test** — a test that starts real Postgres and Redis in containers (Testcontainers) and exercises a path through one or more adapters. Runs in CI with no external infrastructure.
 - **Unit Test** — a test of domain or application logic with no container and no Spring context.
-- **Error Code** — a stable, machine-readable identifier (e.g. `WIDGET_NOT_FOUND`) carried as an extension member of every Problem Detail body and by the exception that produced it. Independent of HTTP status and of the human-readable message; clients branch on it rather than on the status or the message text.
-- **Business Exception** — `BusinessException` and its subtypes: an error whose cause is the caller's request or a violated business rule. Maps to a 4xx response.
-- **System Exception** — `SystemException` and its subtypes: an error whose cause is the service itself or a dependency it calls. Maps to a 5xx response.
+- **Error Code** — a fixed, machine-readable identifier (`BUSINESS_ERROR`, `NOT_FOUND`, `SYSTEM_ERROR`, or a per-field validation code) carried as an extension member of every Problem Detail body. One per exception *type*, assigned by the Global Exception Handler — not a per-business-rule catalogue, and not carried by the exception itself. *(Narrowed by architecture AD-11 from the original per-business-rule design — AD-12 retired.)*
+- **Business Exception** — `BusinessException`: an error whose cause is the caller's request or a violated business rule, not tied to a specific resource lookup. Maps to 400.
+- **Not-Found Exception** — `NotFoundException`: the requested resource does not exist. Maps to 404.
+- **System Exception** — `SystemException`: an error whose cause is the service itself or a dependency it calls. Maps to 500.
 - **Problem Detail** — the one error body schema, RFC 7807 `application/problem+json`, used by every 4xx and 5xx response the service returns.
 - **Global Exception Handler** — the single adapter-in component that translates every exception into the standard error body. Nothing else in the service constructs an error response.
 - **Auth Seam** — a committed but inactive OAuth2 resource-server (JWT) configuration plus documentation, present so authentication can be enabled later without structural change. Not active in v1.
@@ -251,7 +252,7 @@ The Example Slice ships Unit Tests for its domain/application logic and Integrat
 
 ### 4.6 REST API conventions
 
-**Description:** Conventions every Consumer Service inherits: a single JSON error shape, one exception taxonomy (Business Exception / System Exception) funnelled through one Global Exception Handler that emits a Problem Detail carrying an Error Code, consistent validation semantics, and machine-readable API docs so humans and agents can see the surface. Realizes UJ-2, UJ-3.
+**Description:** Conventions every Consumer Service inherits: a single JSON error shape, a three-type exception taxonomy (Business Exception / Not-Found Exception / System Exception) funnelled through one Global Exception Handler that emits a Problem Detail carrying a fixed Error Code, consistent validation semantics, and machine-readable API docs so humans and agents can see the surface. Realizes UJ-2, UJ-3.
 
 **Functional Requirements:**
 
@@ -284,32 +285,29 @@ The running service exposes an OpenAPI description of its REST surface.
 - When the Auth Seam (FR-36) is enabled, the OpenAPI JSON endpoint (`/v3/api-docs`) requires a valid token — it is not one of the paths left open, so the API schema is not served to anonymous callers in production. When the seam is disabled (v1 default) the endpoint is open, matching every other endpoint's v1 posture. *(Extends the AD-18 matcher set; PRD decision, fail-safe by default.)*
 - Adding a resource per FR-6 adds it to the OpenAPI document with no extra wiring.
 
-#### FR-39: Business and System exception taxonomy
+#### FR-39: Business, Not-Found, and System exception taxonomy
 
-Every error the service raises deliberately is either a **Business Exception** (the caller's request or a business rule is at fault) or a **System Exception** (the service or one of its dependencies failed), and each carries an Error Code rather than an HTTP status.
+Every error the service raises deliberately is exactly one of three fixed types — **Business Exception** (400, the caller's request or a business rule is at fault), **Not-Found Exception** (404, the requested resource does not exist), or **System Exception** (500, the service or one of its dependencies failed) — and each carries a human-readable message plus optional structured details, not a per-business-rule error code.
 
 **Consequences (testable):**
-- Two base types, `BusinessException` and `SystemException`, exist in `domain.shared` and are the roots of every deliberately thrown exception in domain and application code. Each carries an `ErrorCode` plus a parameter map and never an HTTP status. *(Settled by architecture AD-12.)*
-- Neither base type references Spring, Jakarta, or HTTP types — the Boundary Test (FR-5) enforces this, since they live in the domain Layer.
-- Each exception instance carries a stable Error Code plus optional structured parameters for message interpolation. It does not carry an HTTP status and does not carry a pre-rendered user-facing message.
-- A Business Exception maps to 4xx — 400 by default, with specific Error Codes mapping to other 4xx statuses (not-found → 404, conflict → 409).
-- A System Exception maps to 500.
-- Every Error Code is declared in one enumerable catalogue — a single Kotlin enum `domain.shared.error.ErrorCode`, each constant carrying a status-free `ErrorKind` (`VALIDATION`, `NOT_FOUND`, `CONFLICT`, `INTERNAL`) and a message template — so the full set of errors the service can return is discoverable in one place. *(Settled by architecture AD-12.)*
-- The Example Slice throws at least one Business Exception and one System Exception, and both paths are covered by tests.
+- Three types, `BusinessException`, `NotFoundException`, and `SystemException`, are the roots of every deliberately thrown exception in the service's own code. Each has exactly one constructor shape — `message: String` and an optional `details: Map<String, Any?>` (default empty) — with no per-instance error-code parameter and no central `ErrorCode` catalogue. *(Settled by architecture AD-11; supersedes this FR's original per-business-rule catalogue design. AD-12, the enum catalogue, is retired.)*
+- Each exception's HTTP status is fixed by its type, not chosen per instance: `BusinessException` always 400, `NotFoundException` always 404, `SystemException` always 500. There is no dedicated conflict/409 status in v1 — a caller-fault case that is not specifically "not found" is a 400.
+- The exception's own `message` and `details` are exactly what the client receives in the Problem Detail body — for all three types, **including System Exception**. There is no server-log-only variant: whatever is passed to the exception is public API surface, so calling code must not put secrets or internal implementation detail in a message or a details map. *(Explicit product decision, overturning this FR's original "clients branch on Error Code, never on message text" framing for the message itself — the message is now part of the contract too.)*
+- The Example Slice throws at least one Business Exception, one Not-Found Exception, and one System Exception, and all three paths are covered by tests.
 
 #### FR-40: Global Exception Handler produces the standard Problem Detail body
 
-A single Global Exception Handler translates every exception — Business, System, framework, or unanticipated — into a Problem Detail body (FR-16) carrying the Error Code.
+A single Global Exception Handler translates every exception — Business, Not-Found, System, framework, or unanticipated — into a Problem Detail body (FR-16) carrying a fixed, type-level Error Code.
 
 **Consequences (testable):**
-- Exactly one `@RestControllerAdvice` in the adapter-in Layer produces error responses for the whole service.
-- A Business Exception yields its Error Code's 4xx status; a System Exception, and any exception the handler does not recognize, yields 500 under a generic Error Code.
-- Every error response carries `Content-Type: application/problem+json` and conforms to RFC 7807: `type` is `about:blank`, plus `title`, `status`, `detail`, `instance` (the request path), and the extension members `code` (the Error Code), `traceId`, and — for validation failures — `errors`. The `ErrorKind` → HTTP status map lives only in the Global Exception Handler. *(Settled by architecture AD-11, AD-12.)*
-- The Error Code, not the HTTP status and not the `detail` text, is the stable contract clients branch on; message wording may change without it being a breaking change.
+- Exactly one `@RestControllerAdvice` produces error responses for the whole service.
+- A Business Exception yields 400; a Not-Found Exception yields 404; a System Exception, and any exception the handler does not recognize, yields 500. Each carries a fixed Error Code — `BUSINESS_ERROR`, `NOT_FOUND`, `SYSTEM_ERROR`, or `UNEXPECTED_ERROR` for an unrecognized exception — assigned by the handler per exception type, not per business rule. *(Settled by architecture AD-11; AD-12's per-business-rule catalogue is retired.)*
+- Every error response carries `Content-Type: application/problem+json` and conforms to RFC 7807: `type` is `about:blank`, plus `title`, `status`, `detail` (the exception's own `message`), `instance` (the request path), and the extension members `code` (the fixed type-level code), `traceId`, `details` (the exception's details map, omitted when empty), and — for validation failures — `errors`.
+- The HTTP status is now the primary signal a client branches on — the three exception types map 1:1 to 400/404/500. `code` is a secondary, type-level hint, not a fine-grained business-rule identifier; a Consumer Service that needs finer client-branchable codes builds its own scheme on top of `details` — not provided by the Starter. *(Narrows this FR's original "clients branch on Error Code, not status" contract.)*
 - Validation failures (FR-17) carry field-level detail in the `errors` extension member of the same Problem Detail schema — an array of `{field, code, message}`, not a second error shape.
 - A test asserts that every error response the Example Slice can produce validates against the documented Problem Detail schema.
-- 500 responses never include the exception message, stack trace, or any internal detail. The System Exception is logged in full at error level with the trace id (FR-22), so the log line and the client's response can be correlated by Error Code and trace id.
-- Tests cover four paths: a Business Exception, a System Exception, a Bean Validation failure (FR-17), and an unanticipated exception. Each asserts status, `Content-Type`, and Error Code.
+- 500 responses **include** the `SystemException`'s own `message` and `details`, same as the other two types — there is no server-log-only variant. The exception is still logged in full at error level with the trace id (FR-22) regardless of what reaches the client, so the log line and the response can be correlated by trace id. *(Explicit product decision, overturning this FR's original "500 never leaks internal detail" rule — Settled by architecture AD-11.)*
+- Tests cover five paths: a Business Exception, a Not-Found Exception, a System Exception, a Bean Validation failure (FR-17), and an unanticipated exception. Each asserts status, `Content-Type`, and Error Code.
 
 ### 4.7 Observability and runtime behavior
 
@@ -545,7 +543,7 @@ The README documents: the Four Parameters and where each lives; how to add a RES
 - Postgres via JPA/Hibernate + Flyway migrations, externalized config, proven by Integration Test (FR-7–FR-9).
 - Redis cache-aside wiring (Redis a hard dependency — no degraded mode; readiness gates on it), externalized config, proven by Integration Test (FR-10–FR-12).
 - One Example Slice (`widgets`, REST → Postgres → Redis) with Unit + Integration Tests, removable without breaking Plumbing (FR-13–FR-15).
-- REST conventions: standard JSON error shape, a Business/System exception taxonomy funnelled through one Global Exception Handler emitting RFC 7807 Problem Details carrying Error Codes, request validation, served OpenAPI (FR-16–FR-18, FR-39–FR-40).
+- REST conventions: standard JSON error shape, a Business/Not-Found/System exception taxonomy funnelled through one Global Exception Handler emitting RFC 7807 Problem Details carrying fixed type-level Error Codes, request validation, served OpenAPI (FR-16–FR-18, FR-39–FR-40).
 - Observability & runtime: health with liveness/readiness groups, Prometheus metrics, OTLP traces (no-op when unset), structured JSON logs with trace correlation, graceful shutdown, env-only configuration (FR-19–FR-24).
 - Local development: Compose Stack (Postgres + Redis only), Local Profile, one run command, documented loop (FR-25–FR-27).
 - Container image via `bootBuildImage` (non-root) and a GitHub Actions pipeline: full build+test on PRs, publish to Registry on `main` tagged SHA + `latest`, Testcontainers in CI, caching (FR-28–FR-31).
@@ -626,8 +624,8 @@ Folded into the FRs above; listed here so the trail is visible.
 - §4.5 FR-13 — collection `GET` uses offset paging (`?page=`, `?size=`) with a `{items, page, size, totalElements, totalPages}` envelope and Starter-owned `PageRequest` / `PageResult` types; cursor paging deferred. *(AD-10.)*
 - §4.7 FR-23 — graceful shutdown on, 30 s phase timeout (env-overridable). *(AD-17.)*
 - §4.6 FR-18 — springdoc-openapi (`springdoc-openapi-starter-webmvc-ui`); OpenAPI JSON in every profile, Swagger UI only under `local`. *(OQ-3.)*
-- §4.6 FR-39 — `BusinessException` / `SystemException` in `domain.shared`; the Error Code catalogue is one Kotlin enum `domain.shared.error.ErrorCode`, each constant carrying a status-free `ErrorKind`. *(AD-12.)*
-- §4.6 FR-40 — the Error Code rides as the Problem Detail `code` extension member; `type` is `about:blank`; `instance` is the request path; validation detail is an `errors` array of `{field, code, message}`; the `ErrorKind` → HTTP status map lives only in the Global Exception Handler. *(AD-11, AD-12.)*
+- §4.6 FR-39 — `BusinessException` (400) / `NotFoundException` (404) / `SystemException` (500), each `message: String, details: Map<String, Any?> = emptyMap()` — no per-instance code, no central `ErrorCode` catalogue. *(AD-11; AD-12, the enum catalogue, is retired — 2026-09-09 update.)*
+- §4.6 FR-40 — each exception type carries a fixed Error Code (`BUSINESS_ERROR`/`NOT_FOUND`/`SYSTEM_ERROR`) assigned by the handler; `type` is `about:blank`; `instance` is the request path; `detail` is the exception's own message; `details` rides as its own extension member; validation detail is a separate `errors` array of `{field, code, message}`. Message and details are echoed to the client for all three types, **including 500** — no server-log-only variant. *(AD-11 — 2026-09-09 update, overturns the original "500 never leaks detail" rule.)*
 - §4.7 FR-21 — OTLP exporter is a no-op (not retrying localhost) when unconfigured, and is unconfigured by default; `management.tracing.sampling.probability` is a configuration value. *(AD-17.)*
 - §4.7 FR-22 — Spring Boot built-in structured JSON logging in non-`local` profiles; `local` keeps console output. *(AD-17.)*
 - §4.8 FR-25 — the Compose Stack is Postgres + Redis only; no OTel collector; image tags come from a root `.env` shared with Testcontainers. *(AD-17, AD-21, OQ-4.)*
