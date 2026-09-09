@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PRD Validation: Spring Boot Kotlin Starter Service</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+
+    --grade-exc: #16a34a;
+    --grade-good: #65a30d;
+    --grade-fair: #d97706;
+    --grade-poor: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade {
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    color: white;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+  .grade-excellent { background: var(--grade-exc); }
+  .grade-good { background: var(--grade-good); }
+  .grade-fair { background: var(--grade-fair); }
+  .grade-poor { background: var(--grade-poor); }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="report-header">
+      <div class="title">
+        <h1>Spring Boot Kotlin Starter Service — Validation Report</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/prds/prd-hl-backend-kotlin-starter-2026-09-07/prd.md</div>
+      </div>
+      <div class="grade grade-good">Good</div>
+    </header>
+
+    <div class="synthesis" style="border-left-color: var(--verdict-strong);">
+      <p><strong>Post-run:</strong> all four medium findings and the quick lows below were fixed in <code>prd.md</code> right after this run, and the PRD was finalized (<code>status: final</code>). This report is the snapshot that drove those fixes; the change list is in the run memlog.</p>
+    </div>
+
+    <div class="synthesis">
+      <p>A disciplined, well-shaped capability spec for an internal build substrate. The thesis &mdash; plumbing that AI agents will extend, so structure must be <em>enforced</em> not merely documented &mdash; is stated, and the features follow from it. Scope honesty is high and, after the architecture reconciliation, the open-items surface is small: six still-open assumptions, one NOTE FOR PM, zero open questions.</p>
+      <p>What keeps it from a clean bill are four medium gaps the reconciliation introduced or exposed: the readiness-probe requirement (FR-19) was not updated alongside the rest of the Redis hard-dependency decision; the accepted availability cost of that decision is unstated; the pagination contract has no FR home (it lives only in the architecture); and the Auth Seam&rsquo;s treatment of the <code>/v3/api-docs</code> endpoint is unspecified. None block the architecture (already complete) and all are small edits &mdash; but they should be closed before epics and stories source-extract from this document.</p>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+      <div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+    </div>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>Choices are stated as choices. &sect;8 is now genuinely closed (seven questions resolved, each with an AD reference), the <code>[NOTE FOR PM]</code> at generator deferral sits on a real tension, and FR-10 / FR-25 name what was overturned. The one gap: the Redis hard-dependency decision states the mechanism but not the cost a decision-maker would weigh.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Redis hard-dependency trade-off is unstated</h3><span class="finding-location">&sect;4.4 FR-10, &sect;11</span></header>
+            <div class="finding-note">The mechanism is specified (readiness gates on Redis, no fallback) but the accepted cost is not &mdash; the service&rsquo;s availability is now bounded by Redis&rsquo;s, for a component introduced as a read optimisation, when Postgres alone could still serve every request. The architecture memlog accepted this explicitly.</div>
+            <div class="finding-fix"><strong>Fix:</strong> add one sentence to FR-10 or &sect;11 Constraints naming the availability coupling as an accepted cost.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>No persona theater (three lean UJs, each driving FRs). Vision is specific to this product and would not swap into another PRD. NFRs carry product-specific bite &mdash; &ldquo;hermetic tests&rdquo; ties to SM-3, &ldquo;agent legibility&rdquo; to SM-2 and UJ-3. The three counter-metrics are real constraints with named tensions.</p>
+        </div></div>
+        <div class="findings-list"><p style="color:var(--muted);font-size:13px;padding:8px 0;">No findings.</p></div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>There is a thesis and the document bets on it. Feature order tracks the thesis (Boundary Test and single-home layout before the Example Slice, which comes before conveniences). Success Metrics validate the thesis rather than measuring activity. MVP scope is a coherent &ldquo;platform / substrate&rdquo; kind and the scope logic matches.</p>
+        </div></div>
+        <div class="findings-list"><p style="color:var(--muted);font-size:13px;padding:8px 0;">No findings.</p></div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details open>
+        <summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>Most FRs carry at least one testable consequence and the soft language is mostly bounded by a nearby number. Three weak spots: the graceful-shutdown default is &ldquo;a documented default&rdquo; while the architecture fixed 30&nbsp;s; the resource-footprint NFR is entirely adjective-bound and FR-32&rsquo;s Kubernetes contract now carries no memory/CPU assertion; and &ldquo;on the first honest attempt&rdquo; is not adjudicable as written.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">No functional requirement for the pagination contract</h3><span class="finding-location">&sect;4.5 FR-13</span></header>
+            <div class="finding-note">FR-13 says the collection <code>GET</code> &ldquo;lists paged&rdquo; but gives no parameters or response shape. The <code>?page=</code>/<code>?size=</code> contract and the <code>{items,page,size,totalElements,totalPages}</code> envelope live only in architecture AD-10, while epics/stories are told to source-extract from the PRD.</div>
+            <div class="finding-fix"><strong>Fix:</strong> add a testable consequence to FR-13 (or FR-13a) capturing the offset-paging parameters and the envelope shape.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Graceful-shutdown default not stated</h3><span class="finding-location">&sect;4.7 FR-23</span></header>
+            <div class="finding-note">Architecture fixes 30&nbsp;s (<code>spring.lifecycle.timeout-per-shutdown-phase</code>, AD-17); FR-23 says only &ldquo;a documented default&rdquo;.</div>
+            <div class="finding-fix"><strong>Fix:</strong> state &ldquo;30&nbsp;s, env-overridable&rdquo;.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Resource-footprint NFR has no measurable bound</h3><span class="finding-location">&sect;10, &sect;4.10 FR-32</span></header>
+            <div class="finding-note">&ldquo;Comfortable container limits&rdquo; / &ldquo;a small domain&rdquo; are adjectives; FR-32&rsquo;s contract asserts nothing about memory or CPU now that sizing is punted to the buildpack calculator.</div>
+            <div class="finding-fix"><strong>Fix:</strong> add a rough ceiling (e.g. &ldquo;starts and serves within a 512&nbsp;MiB container&rdquo;) or state that sizing is explicitly out of scope for v1 and owned by the charts repo.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-low">low</span><h3 class="finding-title">&ldquo;First honest attempt&rdquo; is not adjudicable</h3><span class="finding-location">&sect;4.2 FR-6, &sect;7 SM-2</span></header>
+            <div class="finding-note">No definition of what makes an attempt dishonest.</div>
+            <div class="finding-fix"><strong>Fix:</strong> define it (&ldquo;excluding transcription errors corrected without a design change&rdquo;) or replace with &ldquo;changing no Plumbing file&rdquo;.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Scope honesty</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>&sect;5 Non-Goals does real work; &sect;6.2 Out of Scope is explicit and now lists the OTel collector. Inline <code>[ASSUMPTION]</code> tags round-trip with &sect;9.1. Open-items density is low &mdash; appropriate for a green-light-to-build PRD.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Stale inline wording on the startup-time assumption</h3><span class="finding-location">&sect;10 Startup time</span></header>
+            <div class="finding-note">Still reads &ldquo;confirm during architecture&rdquo;; architecture is complete and carried the target forward without fixing a hard number.</div>
+            <div class="finding-fix"><strong>Fix:</strong> change to &ldquo;confirm during the build&rdquo;.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Downstream usability</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>Glossary present and used verbatim; FR / UJ / SM IDs unique and contiguous; the AD-NN cross-references into <code>ARCHITECTURE-SPINE.md</code> resolve. FR-39/FR-40 sitting in &sect;4.6 out of numeric sequence is a documented, deliberate choice, but a top-to-bottom reader still meets FR-18 &rarr; FR-39 &rarr; FR-40 &rarr; FR-19.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-low">low</span><h3 class="finding-title">FR-14 reads as contradicting the reconciled FR-5</h3><span class="finding-location">&sect;4.5 FR-14</span></header>
+            <div class="finding-note">&ldquo;The application use case contains no Spring web or JPA types&rdquo; is still true but must be read together with FR-5&rsquo;s new two-annotation allowance to not look inconsistent.</div>
+            <div class="finding-fix"><strong>Fix:</strong> &ldquo;no Spring web, data, or JPA types (the two DI annotations of FR-5 aside)&rdquo;.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Shape fit</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>Internal single-operator tool plus an agent operator; the PRD correctly runs a capability-spec shape with deliberately light UJs (&sect;2.3 calibrates this itself). Metrics are an appropriate mix of operational and workflow. Greenfield &mdash; no existing-code references to get wrong. Neither over- nor under-formalised.</p>
+        </div></div>
+        <div class="findings-list"><p style="color:var(--muted);font-size:13px;padding:8px 0;">No findings.</p></div>
+      </details>
+    </section>
+
+    <section class="reviewer-section">
+      <details open>
+        <summary><h2>Adversarial review</h2><span class="reviewer-source">review-adversarial-general.md</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>Stance: assume the reconciliation introduced seams &mdash; places where a decision folded in from the architecture now contradicts an older paragraph, or where &ldquo;resolved&rdquo; hides an unanswered question.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding">
+            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">The readiness probe spec was not updated with the rest of the Redis decision</h3><span class="finding-location">&sect;4.7 FR-19</span></header>
+            <div class="finding-note">FR-10, the &sect;4.4 description, &sect;6.1 and &sect;9.2 all say readiness gates on Redis. FR-19 &mdash; the actual readiness requirement &mdash; still says readiness &ldquo;reflects readiness to serve, including datasource availability&rdquo; and stops there. An engineer implementing FR-19 from the PRD wires only the datasource, dropping the load-bearing half of &ldquo;fail fast, no degraded mode&rdquo;.</div>
+            <div class="finding-fix"><strong>Fix:</strong> FR-19 consequence &rarr; &ldquo;&hellip;including datasource <strong>and Redis</strong> availability (FR-10).&rdquo;</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">/v3/api-docs in production, auth status unspecified</h3><span class="finding-location">&sect;4.6 FR-18, &sect;4.12 FR-37</span></header>
+            <div class="finding-note">FR-18 commits to serving the OpenAPI JSON &ldquo;in every profile&rdquo; including production. FR-37 defines the Auth Seam&rsquo;s endpoint posture only for actuator paths; <code>/v3/api-docs</code> is neither actuator nor under <code>/api/v1/**</code>. When the seam is enabled the PRD does not say whether the API schema is served to anonymous callers in production &mdash; a security-relevant decision with no home.</div>
+            <div class="finding-fix"><strong>Fix:</strong> add a line to FR-18 or FR-37 (&ldquo;requires a token when the Auth Seam is enabled&rdquo; or &ldquo;stays open; schema not considered sensitive&rdquo;) and reflect it in the FR-38 README section.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Pagination has a description but no requirement</h3><span class="finding-location">&sect;4.5 FR-13</span></header>
+            <div class="finding-note">&ldquo;Lists paged&rdquo; with no parameters or body shape. AD-10 defines <code>?page=</code>/<code>?size=</code> and the five-field envelope, but epics/stories source-extract from the PRD, not the architecture.</div>
+            <div class="finding-fix"><strong>Fix:</strong> fold the offset-paging parameters and envelope shape into FR-13 as a testable consequence, or add FR-13a.</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-low">low</span><h3 class="finding-title">&ldquo;Redis a hard dependency&rdquo; vs UJ-1&rsquo;s parity promise</h3><span class="finding-location">&sect;2.3 UJ-1</span></header>
+            <div class="finding-note">With Redis able to hold the pod out of rotation, &ldquo;Redis didn&rsquo;t start locally&rdquo; now looks identical to a production outage &mdash; arguably good (parity), but the PRD never connects the two.</div>
+            <div class="finding-fix"><strong>Fix:</strong> a sentence in UJ-1&rsquo;s edge-case list (&ldquo;Redis not up &rarr; readiness never goes green, same as prod&rdquo;).</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-low">low</span><h3 class="finding-title">.env is new Plumbing the Four-Parameters story doesn&rsquo;t mention</h3><span class="finding-location">&sect;4.8 FR-25, &sect;4.11 FR-33</span></header>
+            <div class="finding-note">FR-25 introduces a root <code>.env</code> holding Postgres/Redis image tags. SM-C3 counts &ldquo;one home per parameter&rdquo;; a reader could wonder whether the HTTP port or DB name also lives there. They do not.</div>
+            <div class="finding-fix"><strong>Fix:</strong> FR-25 or FR-33 &mdash; &ldquo;the <code>.env</code> file holds only Postgres/Redis image tags and is not one of the Four Parameters&rsquo; homes.&rdquo;</div>
+          </article>
+          <article class="finding">
+            <header><span class="badge badge-sev-low">low</span><h3 class="finding-title">&ldquo;Resolved in architecture&rdquo; is doing two different jobs</h3><span class="finding-location">throughout &sect;4</span></header>
+            <div class="finding-note">Some tags mark a genuine reversal of a stated PRD position (FR-5, FR-10, FR-25); others just record that an open assumption got a concrete value (FR-1, FR-3, FR-8, FR-13, FR-22). A reader skimming for &ldquo;what changed&rdquo; can&rsquo;t tell them apart.</div>
+            <div class="finding-fix"><strong>Fix:</strong> consider &ldquo;Overturned by AD-x&rdquo; vs &ldquo;Settled by AD-x&rdquo;.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li>FR-19 / Redis contradiction and the <code>/v3/api-docs</code> Auth Seam gap &mdash; see medium findings above.</li>
+        <li>Title still marked &ldquo;<em>Working title &mdash; confirm.</em>&rdquo; and reads &ldquo;Spring Boot Kotlin Starter Service&rdquo; while the project is <code>hl-backend-kotlin-starter</code>.</li>
+        <li>&sect;12 &ldquo;Downstream Depth&rdquo; still frames the addendum as &ldquo;the architecture step&rsquo;s input&rdquo;; that step is complete and the addendum now carries per-section &ldquo;Resolved&rdquo; lines.</li>
+        <li>Frontmatter <code>status: draft</code>, <code>updated: 2026-09-07</code> &mdash; unchanged; finalisation is a remaining step, not a finding.</li>
+        <li>Assumptions Index round-trip clean: inline <code>[ASSUMPTION]</code> at FR-2 (&times;2), FR-11, FR-15, FR-33, FR-36, &sect;10 all appear in &sect;9.1.</li>
+        <li>FR-39/FR-40 out of numeric order in &sect;4.6 &mdash; pre-existing deliberate choice per &sect;0, not a regression.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: .claude/skills/bmad-prd/assets/prd-validation-checklist.md</span>
+        <span>Generated: 2026-09-07T21:05:00Z</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
