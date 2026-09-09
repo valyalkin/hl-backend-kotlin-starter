@@ -1,0 +1,22 @@
+# Single edit point for every third-party version the Spring Boot BOM does not manage.
+# BOM-managed libraries (Flyway, Testcontainers, Postgres driver, Micrometer, Lettuce,
+# Spring Data Redis, Logback, ...) MUST NOT appear here with a version — see AD-22.
+# The foojay-resolver-convention version is intentionally NOT here: settings plugins
+# evaluate before the catalog, so it is a literal in settings.gradle.kts.
+
+[versions]
+kotlin = "2.4.0"
+springBoot = "4.1.1"
+springdocOpenapi = "3.1.1"
+spotless = "8.10.2"
+ktlint = "1.5.0"
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+
+[libraries]
+# Declared for Epic 2; unreferenced by build.gradle.kts until then.
+springdoc-openapi-starter-webmvc-ui = { module = "org.springdoc:springdoc-openapi-starter-webmvc-ui", version.ref = "springdocOpenapi" }
