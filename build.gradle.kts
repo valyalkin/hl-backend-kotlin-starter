@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spotless)
 }
 
 group = "com.hl"
@@ -15,6 +16,18 @@ kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xjsr305=strict")
         allWarningsAsErrors = true
+    }
+}
+
+spotless {
+    val ktlintVersion = libs.versions.ktlint.get()
+    kotlin {
+        target("src/**/*.kt")
+        ktlint(ktlintVersion)
+    }
+    kotlinGradle {
+        target("**/*.gradle.kts")
+        ktlint(ktlintVersion)
     }
 }
 
