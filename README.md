@@ -36,3 +36,19 @@ package.
 
 `StarterApplication.kt` sits directly under the root package and is the single
 `@SpringBootApplication` entry point.
+
+## Local dependencies
+
+Local Postgres and Redis run as a Compose stack. From the repo root:
+
+```sh
+docker compose up -d
+```
+
+This starts exactly two containers — `postgres` and `redis` — and nothing else.
+
+Their image versions are pinned once, in the root `.env` file
+(`POSTGRES_IMAGE`, `REDIS_IMAGE`). That file is committed on purpose: it holds
+only the two image references, no secrets. Epic 2 adds a Testcontainers base
+class that reads the same `.env`, so that local development and CI stay pinned to
+the identical Postgres and Redis versions.

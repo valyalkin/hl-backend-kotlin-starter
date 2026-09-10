@@ -1,0 +1,35 @@
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE}
+    environment:
+      POSTGRES_DB: hl_service
+      POSTGRES_USER: hl_service
+      POSTGRES_PASSWORD: hl_service
+      # postgres:18 declares its data volume at /var/lib/postgresql and aborts on
+      # startup when a volume is mounted at the old /var/lib/postgresql/data path
+      # (even an empty one). Point PGDATA at a subdirectory so init succeeds.
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - "pgdata:/var/lib/postgresql/data"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U hl_service -d hl_service"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: ${REDIS_IMAGE}
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  pgdata:
