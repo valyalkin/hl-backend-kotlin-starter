@@ -15,3 +15,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-format-and-lint-enforced-in-the-build.md`
   summary: CI (Story 4.2) should prove the lint gate actually fails the build — plant a known formatting / wildcard-import violation and assert `./gradlew build` exits non-zero — not merely run `./gradlew build` against an already-clean tree.
   evidence: Story 1.2 review (verification-gap, blind-hunter) — the `check` → `spotlessCheck` dependency is supplied implicitly by the Spotless plugin and verified only by a manual, ephemeral check; a future Spotless bump could silently drop enforcement with nothing catching it. A Gradle TestKit module is disproportionate now; Story 4.2 owns CI.
+
+## Deferred from: code review of spec-1-3-concern-package-layout-and-a-bootable-application (2026-09-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-3-concern-package-layout-and-a-bootable-application.md`
+  summary: The `tasks.withType<Test>` block in `build.gradle.kts` sets only `useJUnitPlatform()` — no `testLogging { events(...); exceptionFormat = FULL }`. An integration-test failure during `./gradlew build` (local or CI) prints minimal output, adding debugging friction for every clone.
+  evidence: Story 1.3 review iteration 1 (blind-hunter). Pre-existing since the Story 1.1 build skeleton; not caused by this change. CI output/ergonomics is owned by Epic 4 — Story 4.2 (CI builds and tests every pull request).

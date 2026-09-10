@@ -85,6 +85,14 @@ context:
   literal `hl_service`, inline" still holds verbatim; `PGDATA` is an additional
   operational variable, not a credential. Mount path and image tag unchanged.
 
+- **2026-09-10 — `REDIS_IMAGE` pinned to `redis:8.2.9` (code-review iteration 1, user-approved).**
+  The frozen "Always" bullet requires "a specific patch version — no floating major,
+  no `latest`, no digest", but the same block's "Decided:" clause named `redis:8.2`,
+  which Docker Hub re-points to the newest `8.2.x`. That contradiction is resolved in
+  favour of the constraint text: `.env` now pins `redis:8.2.9`. The "Decided:
+  `redis:8.2`" literal is superseded. `postgres:18.1` is unchanged — it is already the
+  full upstream patch level, not a floating major/minor.
+
 ## Review Triage Log
 
 Iteration 0 — blind-hunter, edge-case-hunter, verification-gap. No `high`/`medium`
@@ -170,3 +178,29 @@ findings; no intent_gap or bad_spec; no loopback. verification-gap: no gaps foun
 - Volume persistence: created table `persist_check` with a row, `docker compose down` (no `-v`), `docker compose up -d`, row read back intact. PASS. Cleaned up with `docker compose down -v`.
 - `git check-ignore .env; echo $?` -> exit `1`; `.env` is exactly two lines. PASS.
 - `./gradlew build` -> `BUILD SUCCESSFUL`; `git status` shows only `.env`, `docker-compose.yaml`, `README.md` (plus BMAD tracking artifacts). PASS.
+
+## Review Findings
+
+Code review iteration 1 (2026-09-10) — blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor. verification-gap: no gaps. 1 decision-needed (resolved → patch, applied), 1 patch (applied), 0 deferred, 16 rejected.
+
+- [x] [Review][Patch] `redis:8.2` is not pinned to a specific patch version — `.env` set `REDIS_IMAGE=redis:8.2`; Docker Hub re-points `8.2` to the newest `8.2.x`, so two checkouts of commit `cbecdec` could pull different Redis binaries. Frozen "Always" forbids floating tags ("pinned to a specific patch version — no floating major, no `latest`, no digest", AD-22 / NFR-determinism), while the same block's "Decided:" clause named `redis:8.2` verbatim — a self-contradiction in the frozen block. The same `.env` feeds Epic 2 Testcontainers, so the drift would reach CI. **Resolved (user-approved):** pinned `REDIS_IMAGE=redis:8.2.9` (current `8.2.x` patch); `postgres:18.1` left as-is (already the upstream patch level). See Spec Change Log 2026-09-10.
+- [x] [Review][Patch] README called the compose units "containers" with bare service names [README.md — `## Local dependencies`] — "two containers — `postgres` and `redis`"; Compose names the containers `hl-backend-kotlin-starter-postgres-1` / `-redis-1`, and `postgres` / `redis` are the *service* names. **Applied:** reworded "containers" → "services".
+
+### Rejected
+
+- **Host ports bind `0.0.0.0`; host port may already be in use** (blind-hunter+edge-case-hunter) — `low`. Frozen "Always" mandates `ports: ["5432:5432"]` / `["6379:6379"]` verbatim and Design Notes call fixed host ports deliberate; iteration-0 already rejected both. Local-only stack, throwaway `hl_service` creds. Fix edits the frozen spec.
+- **`${POSTGRES_IMAGE}` / `${REDIS_IMAGE}` have no `:-default` / `:?` fallback** (blind-hunter+edge-case-hunter) — `low`. `.env` is committed; only bites when compose runs from the wrong directory, and compose already prints "The POSTGRES_IMAGE variable is not set" naming the var. Iteration-0 rejected; fix adds guard syntax for an unlikely case.
+- **`.env` has no self-protecting header comment / no `.gitignore` rule for `.env.*`** (blind-hunter) — `low`. Frozen "Always" says `.env` holds only the two keys; Code Map says do not touch `.gitignore`; the README already carries the "committed on purpose, no secrets" note. Iteration-0 rejected; fix edits the frozen spec.
+- **DB credentials duplicated with no single source of truth** (blind-hunter) — `low`. Deliberate and documented: Design Notes put throwaway creds inline (not `.env`, per frozen "Never"), name `application-local.yaml` (Story 1.5) as the canonical home, and task Story 1.8's README with flagging both places. The single literal `hl_service` is chosen to make the later match trivial.
+- **PGDATA comment contradicts the still-present `/var/lib/postgresql/data` mount** (blind-hunter) — `low`/false. The stack works (Verification: postgres healthy, volume persistence confirmed). Pointing `PGDATA` at a subdirectory of the mounted volume is exactly what clears the "unused mount/volume" abort; the comment's last sentence states the resolution. Wording could be tighter — negligible.
+- **README has no teardown / `down -v` reset guidance** (blind-hunter) — `low`. Frozen "Always" enumerates the subsection's content; frozen "Never" defers the full local-dev loop to Story 1.8. Iteration-0 rejected.
+- **Redis persistence is asymmetric / undocumented** (blind-hunter+edge-case-hunter) — `low`. AD-13 mandates Redis has no volume (cache, ephemeral); "no data survives `down`" is the intended contract. README content is frozen-enumerated. Iteration-0 rejected the RDB-snapshot variant on the same ground.
+- **No `restart:` policy on either service** (blind-hunter) — `low`. Frozen "Never": "no `restart:` policy". Fix contradicts the frozen spec.
+- **Pre-existing old-layout `pgdata` volume → silently orphaned data** (edge-case-hunter) — `low`. AC premise is a clean checkout with no prior volume; the DB is throwaway. Iteration-0 rejected. Upgrade notes exceed the frozen README scope (Story 1.8).
+- **Image VOLUME `/var/lib/postgresql` unbound → dangling anonymous volume** (edge-case-hunter) — `low`. With `PGDATA` under the named volume, the parent anonymous volume holds only the empty `data` mountpoint dir and is removed with its container on `docker compose down`. Restructuring the mount deviates from the frozen `pgdata:/var/lib/postgresql/data` bullet.
+- **Cold CI: initdb exceeds `start_period` + retry budget → unhealthy** (edge-case-hunter) — `low`/maybe-false. Speculative — no demonstrated failure; `initdb` on an empty cluster is seconds against a ~60s not-healthy budget, and `start_period` failures don't consume retries on current Docker. Nothing consumes `service_healthy` until Story 1.7. Iteration-0 added `start_period: 10s` for exactly this.
+- **`PGDATA` is not in the frozen env-var enumeration** (acceptance-auditor) — `low`/false. User-approved in the Spec Change Log (2026-09-10, Option A) as an operational variable, not a credential; the stack works. Fix edits the frozen spec.
+- **Healthcheck uses `pg_isready -h 127.0.0.1`, not the spec's literal command** (acceptance-auditor) — false. Documented deliberate fix in the Review Triage Log: socket-only `pg_isready` reports healthy before TCP accepts, which would break Story 1.7's `depends_on: service_healthy`.
+- **`start_period: 10s` added beyond the spec's stated healthcheck params** (acceptance-auditor) — false/low. Documented in the Review Triage Log; prevents first-run `initdb` probe failures from eating the retry budget. Benign.
+- **AC "git status shows only the three files" not literally met** (acceptance-auditor) — `low`. `sprint-status.yaml` and the spec file are BMAD tracking artifacts; the spec's own Verification restates the check as "plus BMAD tracking artifacts". No production artifact affected.
+- **Spec frontmatter `status: 'done'` while the story is at `review`** (acceptance-auditor) — `low`. Real bookkeeping inconsistency, but the fix edits the spec frontmatter under review; this review's sprint-status sync sets the authoritative story status.

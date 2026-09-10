@@ -24,9 +24,9 @@ prefix (`Widget*`) if a package grows large.
 | `com.hl.service.config` | `@Configuration` classes and framework wiring |
 
 The starter ships with none of these classes yet — the table describes where
-each kind of code belongs as a service is built out (Epic 2 onward). Every
-package directory currently holds only an empty `.gitkeep` so it survives a
-fresh clone; delete that file once the package contains a real class.
+each kind of code belongs as the service is built out. Every package directory
+currently holds only an empty `.gitkeep` so it survives a fresh clone; delete
+that file once the package contains a real class.
 
 Dependencies point the conventional Spring direction — controller → service →
 repository — but this layout is a **naming convention only**. There is no
@@ -45,7 +45,7 @@ Local Postgres and Redis run as a Compose stack. From the repo root:
 docker compose up -d
 ```
 
-This starts exactly two containers — `postgres` and `redis` — and nothing else.
+This starts exactly two services — `postgres` and `redis` — and nothing else.
 
 Their image versions are pinned once, in the root `.env` file
 (`POSTGRES_IMAGE`, `REDIS_IMAGE`). That file is committed on purpose: it holds

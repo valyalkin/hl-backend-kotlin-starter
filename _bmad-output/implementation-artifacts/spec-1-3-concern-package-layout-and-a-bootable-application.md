@@ -4,7 +4,7 @@ type: 'feature'
 created: '2026-09-10'
 status: 'done'
 route: 'dispatch'
-review_loop_iteration: 0
+review_loop_iteration: 1
 baseline_commit: 'ed449882366a2b6335864bc916003aed7a770852'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
@@ -123,3 +123,24 @@ No `intent_gap` or `bad_spec` entries — no loopback. Two `patch` entries appli
 - `find src/main/kotlin/com/hl/service -maxdepth 1 -type d` -- expected: the base dir plus the seven concern dirs.
 - `grep -n 'spring-boot-starter"' build.gradle.kts` -- expected: no match (bare core starter gone).
 - Manual: `./gradlew bootRun`, then `curl -s -w '%{http_code}' localhost:8080/actuator/health/liveness` → `200` and body contains `"status":"UP"`; `curl -s -o /dev/null -w '%{http_code}' localhost:8080/actuator/metrics` → `404`. Stop with Ctrl-C.
+
+### Review Findings
+
+_Code review iteration 1 — 2026-09-10 — layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor. Acceptance Auditor: clean (all ACs + frozen constraints satisfied, `./gradlew build` green). Verification Gap: clean (no verification gaps). Most hunter findings reproduce iteration-0 triage-log dispositions._
+
+- [x] [Review][Patch] README ships planning-phase vocabulary — `README.md:27` "(Epic 2 onward)" has no meaning to someone who cloned the starter; reworded to "as the service is built out". [README.md:27]
+- [x] [Review][Defer] `Test` task has no `testLogging` block — an integration-test failure during `./gradlew build` prints minimal output. [build.gradle.kts:41] — deferred: pre-existing DX gap, not caused by this change; owned by Story 4.2 (CI).
+
+**Rejected:**
+- `@Tag("integration")` inert / no tag-filtering task (blind-hunter, verification-gap) — low, pre-existing: `StarterApplicationIT` already carried the tag; already dispositioned as rejected in the iteration-0 triage log.
+- README carries no build/run/prerequisites content (blind-hunter) — out of scope: frozen boundary defers the local-development section to Story 1.8; already tracked in `deferred-work.md`.
+- Boot 4.1 zero-config probe/exposure behaviour undocumented in shipped files (blind-hunter, edge-case-hunter) — low: captured in the spec Design Notes; unlikely to bite outside a Boot major upgrade; mirrors iteration-0's rejection of the "link ARCHITECTURE-SPINE" finding.
+- 404 boundary test guards only `/actuator/metrics` (blind-hunter) — low: spec Implementation Notes sanction the single-endpoint check; broadening it adds test complexity for a non-demonstrated regression.
+- No explicit embedded-container assertion; "real HTTP round-trip never proven" (blind-hunter) — false: `RANDOM_PORT` + `RestTestClient` GET returning `isOk` over HTTP is that proof; verification-gap layer concurs.
+- No readiness-probe smoke coverage (blind-hunter) — out of scope: frozen Boundaries scope the test to liveness; readiness deferred to Stories 1.5–1.6 / Epic 3 (AD-17).
+- `.gitkeep` files are empty / should carry a comment (blind-hunter) — false as a defect: "exactly one committed empty `.gitkeep`" is a frozen spec requirement.
+- README "Package layout" section is main-source-only (blind-hunter) — low: test-source layout is out of scope for this story's README addition.
+- Probe groups disabled outside Kubernetes → liveness 404 (edge-case-hunter) — false: `./gradlew build` green, `LivenessProbeIT` liveness case passed; Boot 4.1 enables probes by default.
+- A later `application.yaml` broadening exposure silently breaks the 404 test (edge-case-hunter) — low: failing when exposure is broadened without thought is the guard test's intended purpose, not a defect.
+- `spring-boot-starter-webmvc-test` may not supply JUnit Jupiter / Boot test context (edge-case-hunter, low conf) — false: `compileTestKotlin` and all three tests green on a full build.
+- `spring-boot-starter-webmvc` may not pull the core starter transitively (edge-case-hunter, low conf) — false: app boots and all tests pass on a full build.
