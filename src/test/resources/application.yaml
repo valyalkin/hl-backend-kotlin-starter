@@ -1,0 +1,17 @@
+spring:
+  # Epic 1's build must stay Docker-free. The data-jpa starter plus a no-default
+  # datasource URL would break the @SpringBootTest ITs (StarterApplicationIT,
+  # LivenessProbeIT), which boot the full context with no database. Exclude the
+  # datasource, Hibernate-JPA and Flyway auto-configuration in test scope.
+  # This file fully shadows the main application.yaml during tests, so it needs
+  # only these keys. Epic 2 / Story 2.2 replaces this with a @ServiceConnection
+  # Testcontainers datasource base class.
+  #
+  # Exact Boot 4.1 FQCNs, confirmed against
+  # META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
+  # in the resolved spring-boot-jdbc / spring-boot-hibernate / spring-boot-flyway jars.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
+      - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
+      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration

@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    # No default: an unset SPRING_DATASOURCE_* env var must fail startup with a
+    # clear "Could not resolve placeholder" error rather than degrade silently
+    # (AD-15, Story AC-3). Literal credentials live only in application-local.yaml.
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    hibernate:
+      # Flyway is the only schema authority (AD-14); Hibernate only validates the
+      # mapping against the Flyway-managed schema and never alters it.
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    # Checksum validation on (AD-14). Auto-repair is intentionally NOT wired:
+    # no spring.flyway.* repair property is set and no repair() call exists, so a
+    # missing or checksum-mismatched migration fails startup loudly.
+    validate-on-migrate: true

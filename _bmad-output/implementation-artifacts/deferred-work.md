@@ -21,3 +21,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-3-concern-package-layout-and-a-bootable-application.md`
   summary: The `tasks.withType<Test>` block in `build.gradle.kts` sets only `useJUnitPlatform()` — no `testLogging { events(...); exceptionFormat = FULL }`. An integration-test failure during `./gradlew build` (local or CI) prints minimal output, adding debugging friction for every clone.
   evidence: Story 1.3 review iteration 1 (blind-hunter). Pre-existing since the Story 1.1 build skeleton; not caused by this change. CI output/ergonomics is owned by Epic 4 — Story 4.2 (CI builds and tests every pull request).
+
+## Deferred from: code review of spec-1-5-postgres-datasource-and-flyway-configured-from-the-environment (2026-09-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-postgres-datasource-and-flyway-configured-from-the-environment.md`
+  summary: Story 2.1 (first JPA entity) must wire Kotlin no-arg support for JPA — add the `org.jetbrains.kotlin.plugin.jpa` (no-arg) plugin, or hand-write no-arg constructors on every `@Entity`. The `spring-boot-starter-data-jpa` dependency is on the classpath as of Story 1.5, but only `kotlin-spring` (all-open) is applied; a Kotlin `@Entity` without a no-arg constructor fails at runtime.
+  evidence: Story 1.5 review (blind-hunter). Not a defect in Story 1.5 — the frozen scope forbids any `@Entity` here — but the gap becomes live the moment `WidgetEntity` (AD-4) is introduced.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-postgres-datasource-and-flyway-configured-from-the-environment.md`
+  summary: DB-backed verification of Story 1.5's persistence wiring is deferred to Epic 2 / Story 2.2. No automated test currently covers: the app booting and connecting with a real datasource; Flyway creating `flyway_schema_history` on startup; the policy values `spring.jpa.hibernate.ddl-auto=validate`, `spring.flyway.validate-on-migrate=true`, `spring.jpa.open-in-view=false` holding; or Flyway failing loudly on a checksum-mismatched / missing migration. Story 2.2's `@ServiceConnection` Testcontainers base is the natural home for these assertions.
+  evidence: Story 1.5 review (blind-hunter, verification-gap). Frozen intent excludes Testcontainers and a real-DB `@SpringBootTest` from this story; the spec routes DB-backed verification to Story 2.2. Manual AC-4 is the only current cover and must be run before Story 1.5 is marked done.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-postgres-datasource-and-flyway-configured-from-the-environment.md`
+  summary: Story 1.8 (README local loop) must document `SPRING_DATASOURCE_URL` / `SPRING_DATASOURCE_USERNAME` / `SPRING_DATASOURCE_PASSWORD` as the required datasource env vars for any non-`local` run, that `application-local.yaml` + `SPRING_PROFILES_ACTIVE=local` is the local alternative, and that an exported `SPRING_DATASOURCE_*` overrides the `local` profile (standard Spring property-source precedence — Hikari logs the effective URL, so it is visible but easy to miss).
+  evidence: Story 1.5 review (blind-hunter, edge-case-hunter). Frozen "Never: No README changes — Story 1.8"; operator documentation is owned by Story 1.8.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-5-postgres-datasource-and-flyway-configured-from-the-environment.md`
+  summary: Story 1.6 (Redis) heads-up — `src/test/resources/application.yaml` excludes `DataSourceAutoConfiguration` / `HibernateJpaAutoConfiguration` / `FlywayAutoConfiguration` in test scope to keep Epic 1's build Docker-free. Adding Redis will need the same treatment (exclude its auto-configuration in test scope, or provide a test double) or the existing `@SpringBootTest` ITs (`StarterApplicationIT`, `LivenessProbeIT`) will fail trying to reach Redis. Epic 2 / Story 2.2 is expected to replace the exclude file with a `@ServiceConnection` Testcontainers base.
+  evidence: Story 1.5 review (blind-hunter). The exclude list must manually track every persistence autoconfig `main` pulls in; drift is silent until a `@SpringBootTest` breaks.

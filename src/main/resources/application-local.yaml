@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    # The only Spring configuration file with literal credentials. These are
+    # throwaway values; the Compose stack's container-init settings in
+    # docker-compose.yaml (POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD all
+    # "hl_service", port 5432) are the matching peer and are not packaged in the
+    # image.
+    # Not active by default: run with SPRING_PROFILES_ACTIVE=local
+    # (Story 1.7 makes it the bootRun default).
+    url: jdbc:postgresql://localhost:5432/hl_service
+    username: hl_service
+    password: hl_service
