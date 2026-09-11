@@ -43,6 +43,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-flyway")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 }
 

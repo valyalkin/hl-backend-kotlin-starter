@@ -37,5 +37,11 @@
   evidence: Story 1.5 review (blind-hunter, edge-case-hunter). Frozen "Never: No README changes — Story 1.8"; operator documentation is owned by Story 1.8.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-postgres-datasource-and-flyway-configured-from-the-environment.md`
-  summary: Story 1.6 (Redis) heads-up — `src/test/resources/application.yaml` excludes `DataSourceAutoConfiguration` / `HibernateJpaAutoConfiguration` / `FlywayAutoConfiguration` in test scope to keep Epic 1's build Docker-free. Adding Redis will need the same treatment (exclude its auto-configuration in test scope, or provide a test double) or the existing `@SpringBootTest` ITs (`StarterApplicationIT`, `LivenessProbeIT`) will fail trying to reach Redis. Epic 2 / Story 2.2 is expected to replace the exclude file with a `@ServiceConnection` Testcontainers base.
-  evidence: Story 1.5 review (blind-hunter). The exclude list must manually track every persistence autoconfig `main` pulls in; drift is silent until a `@SpringBootTest` breaks.
+  summary: RESOLVED by Story 1.6 — adding `spring-boot-starter-data-redis` did NOT require a test-scope exclude. Verified empirically (twice, independently): with the starter on the classpath and nothing on port 6379, `StarterApplicationIT` and `LivenessProbeIT` both stay green. Lettuce's connection factory is lazily connected — no eager ping at context startup. `src/test/resources/application.yaml` was left unchanged.
+  evidence: Story 1.5 review (blind-hunter). The exclude list must manually track every persistence autoconfig `main` pulls in; drift is silent until a `@SpringBootTest` breaks. This particular drift never materialized.
+
+## Deferred from: code review of spec-1-6-redis-connection-and-readiness-gating (2026-09-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-6-redis-connection-and-readiness-gating.md`
+  summary: No automated test exercises `/actuator/health/readiness` end-to-end — that Postgres+Redis both reachable yields `UP` and Redis stopped yields `DOWN` via the actual `management.endpoint.health.group.readiness.include` wiring. A regression in that property (dropped, misspelled, or reverted) would ship undetected by `./gradlew build`; only `RedisHealthDownTest` (a hand-built `ApplicationContextRunner` bypassing the group config) and a one-time manual `curl` check cover this today.
+  evidence: Story 1.6 review (blind-hunter, verification-gap [pre-verified]). Frozen intent explicitly excludes live-Redis/Postgres tests here (mirrors Story 1.5's same deferral); Story 2.2's `@ServiceConnection` Testcontainers base is the intended home for this assertion.

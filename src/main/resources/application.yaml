@@ -17,3 +17,19 @@ spring:
     # no spring.flyway.* repair property is set and no repair() call exists, so a
     # missing or checksum-mismatched migration fails startup loudly.
     validate-on-migrate: true
+  data:
+    redis:
+      # Defaults equal the Compose stack's no-auth localhost:6379 (Story 1.4); no
+      # fail-loud requirement here (unlike the datasource above) since a working
+      # default already matches local dev.
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          # Boot's own readinessState plus the db and redis contributors: readiness
+          # is UP only once Postgres and Redis are both reachable (AD-13, AD-17).
+          include: readinessState,db,redis
