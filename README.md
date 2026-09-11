@@ -37,7 +37,21 @@ package.
 `StarterApplication.kt` sits directly under the root package and is the single
 `@SpringBootApplication` entry point.
 
-## Local dependencies
+## Local development
+
+Following the steps below top to bottom, on a clean machine with only Docker and
+a JDK installed, gets you a running service and a green `./gradlew build` — no
+other setup is required.
+
+### Prerequisites
+
+- **Docker** (with Compose) — runs the local Postgres and Redis.
+- **A JDK on `PATH`, version 17–26** — needed only to launch the Gradle wrapper
+  itself; the wrapper then downloads and runs the exact Gradle version
+  (9.7.1), and the build's own toolchain provisions JDK 25 to compile and run
+  the service. No local Gradle install is needed or used.
+
+### Bring up dependencies
 
 Local Postgres and Redis run as a Compose stack. From the repo root:
 
@@ -46,9 +60,61 @@ docker compose up -d
 ```
 
 This starts exactly two services — `postgres` and `redis` — and nothing else.
+If ports 5432 or 6379 are already taken locally, stop whatever's using them
+first (or edit the port mappings in `docker-compose.yaml`).
 
 Their image versions are pinned once, in the root `.env` file
 (`POSTGRES_IMAGE`, `REDIS_IMAGE`). That file is committed on purpose: it holds
 only the two image references, no secrets. Epic 2 adds a Testcontainers base
 class that reads the same `.env`, so that local development and CI stay pinned to
 the identical Postgres and Redis versions.
+
+### Run the service
+
+With the Compose stack up:
+
+```sh
+./gradlew bootRun
+```
+
+`bootRun` defaults `SPRING_PROFILES_ACTIVE` to `local` when the shell hasn't
+already set it. That profile points the datasource at the Compose stack's
+throwaway Postgres credentials; Redis needs no profile-specific credentials —
+it connects with the plain `localhost:6379` default already in
+`application.yaml`, which matches the Compose stack's no-auth Redis. Either
+way, `bootRun` applies Flyway migrations and starts the service on port 8080
+in the foreground (`Ctrl-C` to stop it). Confirm it's up:
+
+```sh
+curl http://localhost:8080/actuator/health
+```
+
+which reports `{"groups":["liveness","readiness"],"status":"UP"}` once the
+readiness group (datasource + Redis) is satisfied. If port 8080 is already
+taken, stop whatever's using it first. To run against something other than
+the Compose stack, export `SPRING_PROFILES_ACTIVE` (or the individual
+`SPRING_DATASOURCE_*` / `SPRING_DATA_REDIS_*` variables) yourself before
+invoking `bootRun` — an explicit value always wins over the `local` default.
+
+When you're done, stop `bootRun` (`Ctrl-C`) and tear down the dependencies
+with `docker compose down`.
+
+### Run tests
+
+```sh
+./gradlew build
+```
+
+runs the full test suite — unit tests plus `@Tag("integration")` Integration
+Tests — and requires no Docker and no running Compose stack: the test classpath
+excludes the datasource/JPA/Flyway auto-configuration so the `@SpringBootTest`
+Integration Tests boot with no database. (Epic 2 introduces Testcontainers-backed
+Integration Tests that do need Docker.) `build` also runs the format/lint check;
+`./gradlew spotlessApply` auto-fixes formatting violations.
+
+### View API docs
+
+Not available yet — the OpenAPI JSON and `local`-only Swagger UI ship with the
+first REST resource in Epic 2. There is no local trace viewing in v1 either;
+trace export wiring (Epic 3) is configuration-only locally, with nothing to
+view without an external collector.
