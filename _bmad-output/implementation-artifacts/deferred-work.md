@@ -51,3 +51,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-7-run-the-service-locally-on-the-local-profile.md`
   summary: No automated regression guard covers the `bootRun` task's default-to-`local`-profile behavior in `build.gradle.kts` — a future edit to that Gradle block (e.g. accidentally removed, or the env-var check inverted) would silently break the default with nothing failing in `./gradlew build` or CI. Coverage would need a Gradle TestKit functional test, which this project has no infrastructure for yet.
   evidence: Story 1.7 review (blind-hunter). Real gap, but adding TestKit infra is beyond this story's footprint (a one-line Gradle task default); manual verification (see spec's Verification/Implementation Notes) is the only current cover, mirroring the precedent Stories 1.5/1.6 set for build/infra wiring not easily unit-tested.
+
+## Deferred from: code review of spec-2-1-widget-domain-model-jpa-entity-and-first-migration (2026-09-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-widget-domain-model-jpa-entity-and-first-migration.md`
+  summary: `WidgetEntity` is a final Kotlin class (no `kotlin-jpa`/allopen plugin); a future story that adds a lazy association or calls `getReferenceById()` may hit a Hibernate proxying failure.
+  evidence: Story 2.1 review (blind-hunter, maybe-false). No lazy association or `getReferenceById()` call exists yet, so nothing is reachable today; settle by checking the first story that adds either.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-widget-domain-model-jpa-entity-and-first-migration.md`
+  summary: `WidgetEntity`'s JPA mapping (`@Column` names/types) and the `V1__create_widgets.sql` schema are never validated against a real Hibernate session or Flyway run in `./gradlew build` — `WidgetEntityTest` is pure in-memory, and the test config excludes JPA/datasource/Flyway autoconfiguration until Story 2.2 lands.
+  evidence: Story 2.1 review (verification-gap, pre-verified/filed as defer). Story 2.2 (shared Testcontainers base class and a persistence Integration Test) is the explicit, already-planned owner of this coverage.
