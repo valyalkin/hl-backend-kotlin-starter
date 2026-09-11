@@ -5,8 +5,9 @@ spring:
     # docker-compose.yaml (POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD all
     # "hl_service", port 5432) are the matching peer and are not packaged in the
     # image.
-    # Not active by default: run with SPRING_PROFILES_ACTIVE=local
-    # (Story 1.7 makes it the bootRun default).
+    # `./gradlew bootRun` activates this profile by default (see the `bootRun`
+    # task in build.gradle.kts, Story 1.7); override with SPRING_PROFILES_ACTIVE
+    # to run against something else.
     url: jdbc:postgresql://localhost:5432/hl_service
     username: hl_service
     password: hl_service

@@ -1,4 +1,5 @@
 import org.springframework.boot.gradle.plugin.SpringBootPlugin
+import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
     alias(libs.plugins.kotlin.jvm)
@@ -49,4 +50,16 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.named<BootRun>("bootRun") {
+    // Default to the `local` profile so a bare `./gradlew bootRun` (Compose stack
+    // up) connects to Postgres/Redis via application-local.yaml with no extra
+    // setup (Story 1.7). An explicit SPRING_PROFILES_ACTIVE from the caller's
+    // shell still wins over this default. Read via providers.environmentVariable
+    // (not System.getenv) so this is a tracked configuration-cache input.
+    val callerProfile = providers.environmentVariable("SPRING_PROFILES_ACTIVE")
+    if (!callerProfile.isPresent) {
+        environment("SPRING_PROFILES_ACTIVE", "local")
+    }
 }

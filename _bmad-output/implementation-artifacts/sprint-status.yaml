@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 12:00
-last_updated: 09-11-2026 15:42
+last_updated: 09-11-2026 15:52
 project: hl-backend-kotlin-starter
 project_key: NOKEY
 tracking_system: file-system
@@ -42,7 +42,7 @@ development_status:
   1-4-compose-stack-for-local-dependencies: done
   1-5-postgres-datasource-and-flyway-configured-from-the-environme: done
   1-6-redis-connection-and-readiness-gating: done
-  1-7-run-the-service-locally-on-the-local-profile: backlog
+  1-7-run-the-service-locally-on-the-local-profile: review
   1-8-document-the-local-development-loop: backlog
   epic-1-retrospective: optional
 

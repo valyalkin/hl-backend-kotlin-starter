@@ -45,3 +45,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6-redis-connection-and-readiness-gating.md`
   summary: No automated test exercises `/actuator/health/readiness` end-to-end — that Postgres+Redis both reachable yields `UP` and Redis stopped yields `DOWN` via the actual `management.endpoint.health.group.readiness.include` wiring. A regression in that property (dropped, misspelled, or reverted) would ship undetected by `./gradlew build`; only `RedisHealthDownTest` (a hand-built `ApplicationContextRunner` bypassing the group config) and a one-time manual `curl` check cover this today.
   evidence: Story 1.6 review (blind-hunter, verification-gap [pre-verified]). Frozen intent explicitly excludes live-Redis/Postgres tests here (mirrors Story 1.5's same deferral); Story 2.2's `@ServiceConnection` Testcontainers base is the intended home for this assertion.
+
+## Deferred from: code review of spec-1-7-run-the-service-locally-on-the-local-profile (2026-09-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-7-run-the-service-locally-on-the-local-profile.md`
+  summary: No automated regression guard covers the `bootRun` task's default-to-`local`-profile behavior in `build.gradle.kts` — a future edit to that Gradle block (e.g. accidentally removed, or the env-var check inverted) would silently break the default with nothing failing in `./gradlew build` or CI. Coverage would need a Gradle TestKit functional test, which this project has no infrastructure for yet.
+  evidence: Story 1.7 review (blind-hunter). Real gap, but adding TestKit infra is beyond this story's footprint (a one-line Gradle task default); manual verification (see spec's Verification/Implementation Notes) is the only current cover, mirroring the precedent Stories 1.5/1.6 set for build/infra wiring not easily unit-tested.
