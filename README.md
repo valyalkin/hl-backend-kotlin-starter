@@ -65,9 +65,10 @@ first (or edit the port mappings in `docker-compose.yaml`).
 
 Their image versions are pinned once, in the root `.env` file
 (`POSTGRES_IMAGE`, `REDIS_IMAGE`). That file is committed on purpose: it holds
-only the two image references, no secrets. Epic 2 adds a Testcontainers base
-class that reads the same `.env`, so that local development and CI stay pinned to
-the identical Postgres and Redis versions.
+only the two image references, no secrets. A shared Testcontainers base class
+(`IntegrationTestBase`) reads the same `.env` for its Integration Tests, so
+that local development and CI stay pinned to the identical Postgres and Redis
+versions.
 
 ### Run the service
 
@@ -106,11 +107,15 @@ with `docker compose down`.
 ```
 
 runs the full test suite — unit tests plus `@Tag("integration")` Integration
-Tests — and requires no Docker and no running Compose stack: the test classpath
-excludes the datasource/JPA/Flyway auto-configuration so the `@SpringBootTest`
-Integration Tests boot with no database. (Epic 2 introduces Testcontainers-backed
-Integration Tests that do need Docker.) `build` also runs the format/lint check;
-`./gradlew spotlessApply` auto-fixes formatting violations.
+Tests — and requires a working Docker daemon: every `@SpringBootTest`
+Integration Test extends `IntegrationTestBase`, which starts a Postgres and a
+Redis Testcontainer once per JVM via `@ServiceConnection`, so no running
+Compose stack is needed but Docker itself must be available to pull and run
+those images. On a clean machine, the first run also needs outbound
+network/registry access to pull the pinned `postgres:18.1` and `redis:8.2.9`
+images; later runs reuse the local Docker image cache. `build` also runs the
+format/lint check; `./gradlew spotlessApply` auto-fixes formatting
+violations.
 
 ### View API docs
 

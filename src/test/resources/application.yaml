@@ -1,17 +1,20 @@
 spring:
-  # Epic 1's build must stay Docker-free. The data-jpa starter plus a no-default
-  # datasource URL would break the @SpringBootTest ITs (StarterApplicationIT,
-  # LivenessProbeIT), which boot the full context with no database. Exclude the
-  # datasource, Hibernate-JPA and Flyway auto-configuration in test scope.
-  # This file fully shadows the main application.yaml during tests, so it needs
-  # only these keys. Epic 2 / Story 2.2 replaces this with a @ServiceConnection
-  # Testcontainers datasource base class.
-  #
-  # Exact Boot 4.1 FQCNs, confirmed against
-  # META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports
-  # in the resolved spring-boot-jdbc / spring-boot-hibernate / spring-boot-flyway jars.
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration
-      - org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration
-      - org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration
+  # This file fully shadows the main application.yaml during tests, so it
+  # needs to restate every key the Testcontainers-backed connection relies
+  # on. Story 2.2's IntegrationTestBase supplies a real Postgres/Redis via
+  # @ServiceConnection, so JPA/Datasource/Flyway auto-configuration are no
+  # longer excluded here -- mirrors src/main/resources/application.yaml.
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    validate-on-migrate: true
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          # Boot's own readinessState plus the db and redis contributors: readiness
+          # is UP only once Postgres and Redis are both reachable (AD-13, AD-17).
+          include: readinessState,db,redis

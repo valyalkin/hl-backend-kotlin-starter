@@ -37,6 +37,14 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    // Spring Data JPA reflects on WidgetEntity's constructor via kotlin-reflect
+    // because it is a Kotlin class; without it, repository bean creation fails
+    // at runtime with NoClassDefFoundError: kotlin/reflect/full/KClasses. Story
+    // 2.1 never exercised this path (test scope excluded JPA autoconfiguration
+    // entirely); Story 2.2's real Postgres-backed context startup is what
+    // surfaces it. Version aligned to the Kotlin Gradle plugin automatically,
+    // no literal needed.
+    implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.flywaydb:flyway-core")
     // Boot 4 split spring-boot-autoconfigure into per-module artifacts; Flyway's
     // auto-configuration now lives in this dedicated module and is not pulled in by
@@ -46,6 +54,14 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
+    // Shared JVM-wide Testcontainers base class (Story 2.2): @ServiceConnection
+    // wiring plus the Postgres container. Both are BOM-managed, no version
+    // literal (AD-22).
+    testImplementation("org.springframework.boot:spring-boot-testcontainers")
+    // Testcontainers 2.x (pulled in transitively via the Spring Boot BOM's
+    // nested testcontainers-bom import) renamed this module from the legacy
+    // `org.testcontainers:postgresql` to `testcontainers-postgresql`.
+    testImplementation("org.testcontainers:testcontainers-postgresql")
 }
 
 tasks.withType<Test> {
