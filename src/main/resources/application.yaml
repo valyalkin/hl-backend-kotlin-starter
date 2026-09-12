@@ -18,6 +18,11 @@ spring:
     # missing or checksum-mismatched migration fails startup loudly.
     validate-on-migrate: true
   data:
+    web:
+      pageable:
+        # Documents the collection GET's default page size as a discoverable
+        # config value rather than relying on Spring Data's implicit default.
+        default-page-size: 20
     redis:
       # Defaults equal the Compose stack's no-auth localhost:6379 (Story 1.4); no
       # fail-loud requirement here (unlike the datasource above) since a working
