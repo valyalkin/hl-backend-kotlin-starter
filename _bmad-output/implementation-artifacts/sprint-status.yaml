@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 12:00
-last_updated: 09-12-2026 09:30
+last_updated: 09-12-2026 10:02
 project: hl-backend-kotlin-starter
 project_key: NOKEY
 tracking_system: file-system
@@ -50,7 +50,7 @@ development_status:
   2-1-widget-domain-model-jpa-entity-and-first-migration: review
   2-2-shared-testcontainers-base-class-and-a-persistence-integrati: review
   2-3-rfc-7807-error-contract-and-the-global-exception-handler: review
-  2-4-widget-service-operations: backlog
+  2-4-widget-service-operations: review
   2-5-widget-rest-endpoints-and-dtos: backlog
   2-6-request-validation-with-field-level-errors: backlog
   2-7-redis-cache-aside-on-read-by-id: backlog

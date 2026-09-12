@@ -66,3 +66,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-rfc-7807-error-contract-and-the-global-exception-handler.md`
   summary: `GlobalExceptionHandler.respond()` builds `problem.instance = URI.create(request.requestURI)`, which throws `IllegalArgumentException` for a request path containing characters outside `java.net.URI`'s RFC 2396 grammar — turning error rendering itself into an unhandled 500 with no problem+json body for that narrow class of request.
   evidence: edge-case-hunter review. Reachability is unsettled: Tomcat's default connector (`relaxedPathChars`/`relaxedQueryChars` both unset) rejects non-compliant paths before dispatch, so this project's default config likely never reaches the vulnerable line; only a future connector-relaxation config, a different embedded server, or a reverse proxy that forwards a raw path would exercise it. Settle by adding a `relaxedPathChars` integration test or wrapping `URI.create` defensively if that configuration is ever adopted.
+
+## Deferred from: code review of spec-2-4-widget-service-operations (2026-09-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-4-widget-service-operations.md`
+  summary: `WidgetService.update` has no optimistic locking, so two concurrent updates to the same widget can silently lose one write with no error.
+  evidence: edge-case-hunter review. Real if it occurs (would be medium severity — a silent lost update), but nothing in Epic 2's requirements or architecture calls for optimistic locking on widgets, and no test or usage in this story's scope demonstrates the race. Settle by adding a `@Version` column to `WidgetEntity` (plus a migration) and a concurrency integration test hitting two simultaneous updates, if this pattern needs to guard against lost updates.
