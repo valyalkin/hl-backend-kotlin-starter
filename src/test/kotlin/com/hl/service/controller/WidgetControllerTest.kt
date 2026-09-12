@@ -47,6 +47,40 @@ class WidgetControllerTest {
     }
 
     @Test
+    fun `create with a blank name returns 400 Problem Detail with a NotBlank field error`() {
+        mockMvc
+            .post("/api/v1/widgets") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":""}"""
+            }.andExpect {
+                status { isBadRequest() }
+                content { contentType(MediaType.APPLICATION_PROBLEM_JSON) }
+                jsonPath("$.code") { value("VALIDATION_ERROR") }
+                jsonPath("$.errors.length()") { value(1) }
+                jsonPath("$.errors[0].field") { value("name") }
+                jsonPath("$.errors[0].code") { value("NotBlank") }
+                jsonPath("$.errors[0].message") { exists() }
+            }
+    }
+
+    @Test
+    fun `create with a whitespace-only name returns 400 Problem Detail with a NotBlank field error`() {
+        mockMvc
+            .post("/api/v1/widgets") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"   "}"""
+            }.andExpect {
+                status { isBadRequest() }
+                content { contentType(MediaType.APPLICATION_PROBLEM_JSON) }
+                jsonPath("$.code") { value("VALIDATION_ERROR") }
+                jsonPath("$.errors.length()") { value(1) }
+                jsonPath("$.errors[0].field") { value("name") }
+                jsonPath("$.errors[0].code") { value("NotBlank") }
+                jsonPath("$.errors[0].message") { exists() }
+            }
+    }
+
+    @Test
     fun `create Location header points at the created widget's id`() {
         val result =
             mockMvc
@@ -99,6 +133,44 @@ class WidgetControllerTest {
                 status { isOk() }
                 jsonPath("$.id") { value(created.id.toString()) }
                 jsonPath("$.name") { value("new") }
+            }
+    }
+
+    @Test
+    fun `update with a blank name returns 400 Problem Detail with a NotBlank field error`() {
+        val created = widgetService.create("gadget")
+
+        mockMvc
+            .put("/api/v1/widgets/${created.id}") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":""}"""
+            }.andExpect {
+                status { isBadRequest() }
+                content { contentType(MediaType.APPLICATION_PROBLEM_JSON) }
+                jsonPath("$.code") { value("VALIDATION_ERROR") }
+                jsonPath("$.errors.length()") { value(1) }
+                jsonPath("$.errors[0].field") { value("name") }
+                jsonPath("$.errors[0].code") { value("NotBlank") }
+                jsonPath("$.errors[0].message") { exists() }
+            }
+    }
+
+    @Test
+    fun `update with a whitespace-only name returns 400 Problem Detail with a NotBlank field error`() {
+        val created = widgetService.create("gadget")
+
+        mockMvc
+            .put("/api/v1/widgets/${created.id}") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"   "}"""
+            }.andExpect {
+                status { isBadRequest() }
+                content { contentType(MediaType.APPLICATION_PROBLEM_JSON) }
+                jsonPath("$.code") { value("VALIDATION_ERROR") }
+                jsonPath("$.errors.length()") { value(1) }
+                jsonPath("$.errors[0].field") { value("name") }
+                jsonPath("$.errors[0].code") { value("NotBlank") }
+                jsonPath("$.errors[0].message") { exists() }
             }
     }
 

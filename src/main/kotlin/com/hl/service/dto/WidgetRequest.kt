@@ -1,11 +1,11 @@
 package com.hl.service.dto
 
+import jakarta.validation.constraints.NotBlank
+
 /**
  * Wire representation of a widget create/update body.
- *
- * No Bean Validation annotations here yet -- Story 2.6 owns request
- * validation.
  */
 data class WidgetRequest(
+    @field:NotBlank
     val name: String,
 )

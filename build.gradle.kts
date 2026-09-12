@@ -53,6 +53,9 @@ dependencies {
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     runtimeOnly("org.postgresql:postgresql")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
+    // Enables @Valid/Bean Validation processing (Story 2.6). BOM-managed, no
+    // version literal (AD-22).
+    implementation("org.springframework.boot:spring-boot-starter-validation")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     // Shared JVM-wide Testcontainers base class (Story 2.2): @ServiceConnection
     // wiring plus the Postgres container. Both are BOM-managed, no version

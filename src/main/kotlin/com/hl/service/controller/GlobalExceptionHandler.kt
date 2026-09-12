@@ -6,12 +6,17 @@ import com.hl.service.error.SystemException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.HttpStatusCode
 import org.springframework.http.MediaType
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.context.request.ServletWebRequest
+import org.springframework.web.context.request.WebRequest
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
 import java.net.URI
 
@@ -39,19 +44,19 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     fun handleBusiness(
         ex: BusinessException,
         request: HttpServletRequest,
-    ): ResponseEntity<ProblemDetail> = respond(HttpStatus.BAD_REQUEST, "BUSINESS_ERROR", ex, ex.details, request)
+    ): ResponseEntity<Any> = respond(HttpStatus.BAD_REQUEST, "BUSINESS_ERROR", ex, ex.details, request)
 
     @ExceptionHandler(NotFoundException::class)
     fun handleNotFound(
         ex: NotFoundException,
         request: HttpServletRequest,
-    ): ResponseEntity<ProblemDetail> = respond(HttpStatus.NOT_FOUND, "NOT_FOUND", ex, ex.details, request)
+    ): ResponseEntity<Any> = respond(HttpStatus.NOT_FOUND, "NOT_FOUND", ex, ex.details, request)
 
     @ExceptionHandler(SystemException::class)
     fun handleSystem(
         ex: SystemException,
         request: HttpServletRequest,
-    ): ResponseEntity<ProblemDetail> {
+    ): ResponseEntity<Any> {
         val traceId = currentTraceId()
         // SystemException's message and details are echoed to the client as-is
         // (no scrubbed variant); this log line is the server-side record of the
@@ -64,12 +69,49 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     fun handleUnexpected(
         ex: Exception,
         request: HttpServletRequest,
-    ): ResponseEntity<ProblemDetail> {
+    ): ResponseEntity<Any> {
         val traceId = currentTraceId()
         // An unanticipated exception is as much a server-side failure as a
         // SystemException; log it the same way so it leaves a trace too.
         log.error("Unexpected failure (traceId=$traceId): ${ex.message}", ex)
         return respond(HttpStatus.INTERNAL_SERVER_ERROR, "UNEXPECTED_ERROR", ex, emptyMap(), request, traceId)
+    }
+
+    /**
+     * Renders a [MethodArgumentNotValidException] (a `@Valid`-annotated
+     * request body that failed Bean Validation) in the same Problem Detail
+     * shape as the four handlers above, plus an `errors` array of
+     * `{field, code, message}` -- one entry per violated field. Validation is
+     * orthogonal to the three [com.hl.service.error.AppException] subtypes
+     * (architecture memlog decision): `VALIDATION_ERROR` is a distinct
+     * top-level `code`, and each field entry's own `code` is the violated
+     * constraint's simple name (e.g. `NotBlank`), never one of the four
+     * exception-type codes.
+     *
+     * `FieldError.getCode()` returns the *last* entry of Spring's resolved
+     * message-codes array (`DefaultMessageCodesResolver`'s least-specific
+     * fallback), which for a Bean Validation violation is the bare constraint
+     * annotation name -- not the field-qualified variant. No extra parsing
+     * needed.
+     */
+    override fun handleMethodArgumentNotValid(
+        ex: MethodArgumentNotValidException,
+        headers: HttpHeaders,
+        status: HttpStatusCode,
+        request: WebRequest,
+    ): ResponseEntity<Any> {
+        val errors =
+            ex.bindingResult.fieldErrors.map {
+                FieldValidationError(it.field, it.code ?: "INVALID", it.defaultMessage ?: "")
+            }
+        return respond(
+            HttpStatus.BAD_REQUEST,
+            "VALIDATION_ERROR",
+            ex,
+            emptyMap(),
+            (request as ServletWebRequest).request,
+            errors = errors,
+        )
     }
 
     private fun respond(
@@ -79,7 +121,8 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         details: Map<String, Any?>,
         request: HttpServletRequest,
         traceId: String = currentTraceId(),
-    ): ResponseEntity<ProblemDetail> {
+        errors: List<FieldValidationError>? = null,
+    ): ResponseEntity<Any> {
         // A null message (e.g. a bare `IllegalStateException()`) must never
         // surface as an empty, undiagnostic `detail`; fall back to the
         // exception's simple class name.
@@ -92,6 +135,9 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         if (details.isNotEmpty()) {
             problem.setProperty("details", details)
         }
+        if (errors != null) {
+            problem.setProperty("errors", errors)
+        }
         return ResponseEntity
             .status(status)
             .contentType(MediaType.APPLICATION_PROBLEM_JSON)
@@ -99,6 +145,12 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     }
 
     private fun currentTraceId(): String = MDC.get("traceId") ?: ""
+
+    private data class FieldValidationError(
+        val field: String,
+        val code: String,
+        val message: String,
+    )
 
     companion object {
         // Named `log`, not `logger`: `ResponseEntityExceptionHandler`'s

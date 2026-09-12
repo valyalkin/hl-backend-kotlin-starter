@@ -4,6 +4,7 @@ import com.hl.service.dto.PageResponse
 import com.hl.service.dto.WidgetRequest
 import com.hl.service.dto.WidgetResponse
 import com.hl.service.service.WidgetService
+import jakarta.validation.Valid
 import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -33,7 +34,7 @@ class WidgetController(
 ) {
     @PostMapping
     fun create(
-        @RequestBody request: WidgetRequest,
+        @Valid @RequestBody request: WidgetRequest,
     ): ResponseEntity<WidgetResponse> {
         val widget = widgetService.create(request.name)
         val location =
@@ -53,7 +54,7 @@ class WidgetController(
     @PutMapping("/{id}")
     fun update(
         @PathVariable id: UUID,
-        @RequestBody request: WidgetRequest,
+        @Valid @RequestBody request: WidgetRequest,
     ): WidgetResponse = WidgetResponse.from(widgetService.update(id, request.name))
 
     @DeleteMapping("/{id}")
