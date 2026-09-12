@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 12:00
-last_updated: 09-11-2026 23:58
+last_updated: 09-12-2026 09:30
 project: hl-backend-kotlin-starter
 project_key: NOKEY
 tracking_system: file-system
@@ -49,7 +49,7 @@ development_status:
   epic-2: in-progress
   2-1-widget-domain-model-jpa-entity-and-first-migration: review
   2-2-shared-testcontainers-base-class-and-a-persistence-integrati: review
-  2-3-rfc-7807-error-contract-and-the-global-exception-handler: backlog
+  2-3-rfc-7807-error-contract-and-the-global-exception-handler: review
   2-4-widget-service-operations: backlog
   2-5-widget-rest-endpoints-and-dtos: backlog
   2-6-request-validation-with-field-level-errors: backlog

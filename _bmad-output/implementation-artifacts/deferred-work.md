@@ -60,3 +60,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-widget-domain-model-jpa-entity-and-first-migration.md`
   summary: `WidgetEntity`'s JPA mapping (`@Column` names/types) and the `V1__create_widgets.sql` schema are never validated against a real Hibernate session or Flyway run in `./gradlew build` — `WidgetEntityTest` is pure in-memory, and the test config excludes JPA/datasource/Flyway autoconfiguration until Story 2.2 lands.
   evidence: Story 2.1 review (verification-gap, pre-verified/filed as defer). Story 2.2 (shared Testcontainers base class and a persistence Integration Test) is the explicit, already-planned owner of this coverage.
+
+## Deferred from: code review of spec-2-3-rfc-7807-error-contract-and-the-global-exception-handler (2026-09-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-rfc-7807-error-contract-and-the-global-exception-handler.md`
+  summary: `GlobalExceptionHandler.respond()` builds `problem.instance = URI.create(request.requestURI)`, which throws `IllegalArgumentException` for a request path containing characters outside `java.net.URI`'s RFC 2396 grammar — turning error rendering itself into an unhandled 500 with no problem+json body for that narrow class of request.
+  evidence: edge-case-hunter review. Reachability is unsettled: Tomcat's default connector (`relaxedPathChars`/`relaxedQueryChars` both unset) rejects non-compliant paths before dispatch, so this project's default config likely never reaches the vulnerable line; only a future connector-relaxation config, a different embedded server, or a reverse proxy that forwards a raw path would exercise it. Settle by adding a `relaxedPathChars` integration test or wrapping `URI.create` defensively if that configuration is ever adopted.
