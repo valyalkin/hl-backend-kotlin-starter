@@ -56,6 +56,10 @@ dependencies {
     // Enables @Valid/Bean Validation processing (Story 2.6). BOM-managed, no
     // version literal (AD-22).
     implementation("org.springframework.boot:spring-boot-starter-validation")
+    // Enables @EnableCaching/RedisCacheManager autoconfiguration for the
+    // cache-aside read path (Story 2.7). BOM-managed, no version literal
+    // (AD-22).
+    implementation("org.springframework.boot:spring-boot-starter-cache")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     // Shared JVM-wide Testcontainers base class (Story 2.2): @ServiceConnection
     // wiring plus the Postgres container. Both are BOM-managed, no version

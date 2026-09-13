@@ -4,6 +4,8 @@ import com.hl.service.error.NotFoundException
 import com.hl.service.model.Widget
 import com.hl.service.repository.WidgetEntity
 import com.hl.service.repository.WidgetRepository
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.dao.EmptyResultDataAccessException
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
@@ -37,6 +39,7 @@ class WidgetService(
         return widgetRepository.save(WidgetEntity.fromDomain(widget)).toDomain()
     }
 
+    @Cacheable(cacheNames = ["widgets"], key = "#id", sync = true)
     fun findById(id: UUID): Widget =
         widgetRepository
             .findById(id)
@@ -44,6 +47,7 @@ class WidgetService(
             .toDomain()
 
     @Transactional
+    @CacheEvict(cacheNames = ["widgets"], key = "#id")
     fun update(
         id: UUID,
         name: String,
@@ -58,6 +62,7 @@ class WidgetService(
     }
 
     @Transactional
+    @CacheEvict(cacheNames = ["widgets"], key = "#id")
     fun delete(id: UUID) {
         if (!widgetRepository.existsById(id)) {
             throw NotFoundException("Widget $id not found")

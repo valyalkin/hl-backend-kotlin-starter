@@ -30,6 +30,14 @@ spring:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
       password: ${SPRING_DATA_REDIS_PASSWORD:}
+  cache:
+    # Framework-managed cache-aside for WidgetService.findById (Story 2.7): a
+    # RedisCacheManager is autoconfigured from these properties, no custom
+    # CacheManager bean. TTL applies to every cache, dynamically created
+    # caches included.
+    type: redis
+    redis:
+      time-to-live: 10m
 management:
   endpoint:
     health:

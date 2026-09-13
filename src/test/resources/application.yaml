@@ -10,6 +10,10 @@ spring:
     open-in-view: false
   flyway:
     validate-on-migrate: true
+  cache:
+    type: redis
+    redis:
+      time-to-live: 10m
 management:
   endpoint:
     health:
