@@ -69,6 +69,11 @@ dependencies {
     // nested testcontainers-bom import) renamed this module from the legacy
     // `org.testcontainers:postgresql` to `testcontainers-postgresql`.
     testImplementation("org.testcontainers:testcontainers-postgresql")
+    // `@Testcontainers`/`@Container` JUnit 5 extension (Story 2.8): only
+    // `RedisDownIT`'s own, class-scoped Postgres+Redis pair uses this --
+    // `IntegrationTestBase`'s JVM-shared containers are started/stopped by
+    // hand instead (AD-21). BOM-managed, no version literal (AD-22).
+    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
 }
 
 tasks.withType<Test> {

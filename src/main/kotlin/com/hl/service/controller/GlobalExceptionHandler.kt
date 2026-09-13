@@ -6,6 +6,7 @@ import com.hl.service.error.SystemException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
+import org.springframework.data.redis.RedisConnectionFailureException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
@@ -22,7 +23,8 @@ import java.net.URI
 
 /**
  * Sole producer of error response bodies (AD-11). Renders every exception it
- * sees -- the three `AppException` subtypes below, plus any unanticipated
+ * sees -- the three `AppException` subtypes below, `RedisConnectionFailureException`
+ * (mapped to the same shape as `SystemException`), plus any unanticipated
  * exception -- as an RFC 7807 `application/problem+json` body with `code`,
  * `traceId`, and `details` extension members.
  *
@@ -30,11 +32,11 @@ import java.net.URI
  * `@RestControllerAdvice` class so a future story can override
  * `handleExceptionInternal` to give MVC framework-raised exceptions
  * (malformed body, unsupported media type, etc.) the same `code`/`traceId`/
- * `details` treatment as the four handlers below. That override does not
+ * `details` treatment as the five handlers below. That override does not
  * exist yet: today, a framework exception is handled by the superclass's
  * own more-specific inherited handlers and comes back as a bare
  * `ProblemDetail` with none of these extension members. Only the base-class
- * choice is in place; only the four `@ExceptionHandler` methods below --
+ * choice is in place; only the five `@ExceptionHandler` methods below --
  * which take priority over any inherited handling for their exact exception
  * types -- add `code`/`traceId`/`details`.
  */
@@ -56,13 +58,40 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     fun handleSystem(
         ex: SystemException,
         request: HttpServletRequest,
+    ): ResponseEntity<Any> = respondAsSystemFailure(ex, request, ex.details)
+
+    // Not caught by handleUnexpected below despite RedisConnectionFailureException
+    // not being an AppException subtype: Spring's ExceptionHandlerMethodResolver
+    // picks the most specific declared exception type for the thrown exception
+    // (ExceptionDepthComparator), independent of where either method is declared
+    // in this class, so this handler always wins over handleUnexpected's
+    // `Exception::class` for this exception type.
+    @ExceptionHandler(RedisConnectionFailureException::class)
+    fun handleRedisConnectionFailure(
+        ex: RedisConnectionFailureException,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> = respondAsSystemFailure(ex, request)
+
+    /**
+     * Shared by [handleSystem] and [handleRedisConnectionFailure]: a Redis
+     * connection failure is a system failure, not just the `SystemException`
+     * class itself (epic's documented "propagates Redis failures as
+     * SystemException" contract, Story 2.8, AD-13), so both render identically
+     * -- same 500/SYSTEM_ERROR shape, same server-side error log correlated by
+     * traceId -- via this one implementation, so they cannot silently drift
+     * apart.
+     */
+    private fun respondAsSystemFailure(
+        ex: Throwable,
+        request: HttpServletRequest,
+        details: Map<String, Any?> = emptyMap(),
     ): ResponseEntity<Any> {
         val traceId = currentTraceId()
-        // SystemException's message and details are echoed to the client as-is
+        // The exception's message and details are echoed to the client as-is
         // (no scrubbed variant); this log line is the server-side record of the
         // same failure, correlated by the same traceId.
         log.error("System failure (traceId=$traceId): ${ex.message}", ex)
-        return respond(HttpStatus.INTERNAL_SERVER_ERROR, "SYSTEM_ERROR", ex, ex.details, request, traceId)
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR, "SYSTEM_ERROR", ex, details, request, traceId)
     }
 
     @ExceptionHandler(Exception::class)
@@ -80,7 +109,7 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     /**
      * Renders a [MethodArgumentNotValidException] (a `@Valid`-annotated
      * request body that failed Bean Validation) in the same Problem Detail
-     * shape as the four handlers above, plus an `errors` array of
+     * shape as the five handlers above, plus an `errors` array of
      * `{field, code, message}` -- one entry per violated field. Validation is
      * orthogonal to the three [com.hl.service.error.AppException] subtypes
      * (architecture memlog decision): `VALIDATION_ERROR` is a distinct
