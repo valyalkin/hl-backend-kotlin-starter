@@ -48,4 +48,36 @@ class WidgetRepositoryIT(
 
         assertThat(found).isEqualTo(widget)
     }
+
+    @Test
+    fun `existsByNameIgnoreCase resolves against real Postgres, case-insensitively`() {
+        widgetRepository.saveAndFlush(
+            WidgetEntity.fromDomain(
+                Widget(name = "gadget", createdAt = Instant.now(), updatedAt = Instant.now()),
+            ),
+        )
+
+        assertThat(widgetRepository.existsByNameIgnoreCase("gadget")).isTrue()
+        assertThat(widgetRepository.existsByNameIgnoreCase("GADGET")).isTrue()
+        assertThat(widgetRepository.existsByNameIgnoreCase("widget")).isFalse()
+    }
+
+    @Test
+    fun `existsByNameIgnoreCaseAndIdNot resolves against real Postgres, excluding the widget's own row`() {
+        val widget =
+            widgetRepository.saveAndFlush(
+                WidgetEntity.fromDomain(
+                    Widget(name = "gadget", createdAt = Instant.now(), updatedAt = Instant.now()),
+                ),
+            )
+        val other =
+            widgetRepository.saveAndFlush(
+                WidgetEntity.fromDomain(
+                    Widget(name = "widget", createdAt = Instant.now(), updatedAt = Instant.now()),
+                ),
+            )
+
+        assertThat(widgetRepository.existsByNameIgnoreCaseAndIdNot("gadget", widget.id)).isFalse()
+        assertThat(widgetRepository.existsByNameIgnoreCaseAndIdNot("GADGET", other.id)).isTrue()
+    }
 }

@@ -175,6 +175,51 @@ class WidgetControllerTest {
     }
 
     @Test
+    fun `create with a name that already belongs to another widget returns 400 Problem Detail with BUSINESS_ERROR`() {
+        widgetService.create("gadget")
+
+        mockMvc
+            .post("/api/v1/widgets") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"gadget"}"""
+            }.andExpect {
+                status { isBadRequest() }
+                content { contentType(MediaType.APPLICATION_PROBLEM_JSON) }
+                jsonPath("$.code") { value("BUSINESS_ERROR") }
+            }
+    }
+
+    @Test
+    fun `update to a name already used by a different widget returns 400 Problem Detail with BUSINESS_ERROR`() {
+        widgetService.create("gadget")
+        val other = widgetService.create("widget")
+
+        mockMvc
+            .put("/api/v1/widgets/${other.id}") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"gadget"}"""
+            }.andExpect {
+                status { isBadRequest() }
+                content { contentType(MediaType.APPLICATION_PROBLEM_JSON) }
+                jsonPath("$.code") { value("BUSINESS_ERROR") }
+            }
+    }
+
+    @Test
+    fun `update to the widget's own current name returns 200, no conflict`() {
+        val created = widgetService.create("gadget")
+
+        mockMvc
+            .put("/api/v1/widgets/${created.id}") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"gadget"}"""
+            }.andExpect {
+                status { isOk() }
+                jsonPath("$.name") { value("gadget") }
+            }
+    }
+
+    @Test
     fun `update returns 404 Problem Detail for an unknown id`() {
         val id = UUID.randomUUID()
 

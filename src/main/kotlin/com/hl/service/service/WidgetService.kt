@@ -1,5 +1,6 @@
 package com.hl.service.service
 
+import com.hl.service.error.BusinessException
 import com.hl.service.error.NotFoundException
 import com.hl.service.model.Widget
 import com.hl.service.repository.WidgetEntity
@@ -29,6 +30,9 @@ class WidgetService(
 ) {
     @Transactional
     fun create(name: String): Widget {
+        if (widgetRepository.existsByNameIgnoreCase(name)) {
+            throw BusinessException("Widget name '$name' already exists")
+        }
         val now = Instant.now()
         val widget =
             Widget(
@@ -56,6 +60,9 @@ class WidgetService(
             widgetRepository
                 .findById(id)
                 .orElseThrow { NotFoundException("Widget $id not found") }
+        if (widgetRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
+            throw BusinessException("Widget name '$name' already exists")
+        }
         entity.name = name
         entity.updatedAt = Instant.now().truncatedTo(ChronoUnit.MICROS)
         return widgetRepository.save(entity).toDomain()

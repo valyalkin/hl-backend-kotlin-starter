@@ -9,10 +9,11 @@ import java.util.UUID
 
 /**
  * In-memory fake [WidgetRepository] backed by a `LinkedHashMap`, implementing
- * only `save`, `findById`, `existsById`, `deleteById`, and `findAll(Pageable)`
- * -- the subset [com.hl.service.service.WidgetService] actually calls. Every
- * other `JpaRepository` method throws [NotImplementedError] since nothing
- * under test invokes it.
+ * only `save`, `findById`, `existsById`, `deleteById`, `findAll(Pageable)`,
+ * `existsByNameIgnoreCase`, and `existsByNameIgnoreCaseAndIdNot` -- the subset
+ * [com.hl.service.service.WidgetService] actually calls. Every other
+ * `JpaRepository` method throws [NotImplementedError] since nothing under
+ * test invokes it.
  *
  * Extracted from `WidgetServiceTest` so `WidgetControllerTest` can reuse it
  * without duplicating ~90 lines of `JpaRepository` stubs.
@@ -28,6 +29,13 @@ class FakeWidgetRepository : WidgetRepository {
     override fun findById(id: UUID): java.util.Optional<WidgetEntity> = java.util.Optional.ofNullable(store[id])
 
     override fun existsById(id: UUID): Boolean = store.containsKey(id)
+
+    override fun existsByNameIgnoreCase(name: String): Boolean = store.values.any { it.name.equals(name, ignoreCase = true) }
+
+    override fun existsByNameIgnoreCaseAndIdNot(
+        name: String,
+        id: UUID,
+    ): Boolean = store.values.any { it.name.equals(name, ignoreCase = true) && it.id != id }
 
     override fun deleteById(id: UUID) {
         store.remove(id)

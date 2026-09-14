@@ -1,5 +1,6 @@
 package com.hl.service.service
 
+import com.hl.service.error.BusinessException
 import com.hl.service.error.NotFoundException
 import com.hl.service.support.FakeWidgetRepository
 import org.assertj.core.api.Assertions.assertThat
@@ -63,6 +64,48 @@ class WidgetServiceTest {
         assertThatThrownBy { service().update(id, "new") }
             .isInstanceOf(NotFoundException::class.java)
             .hasMessage("Widget $id not found")
+    }
+
+    @Test
+    fun `create throws BusinessException for a name that already belongs to another widget`() {
+        val widgetService = service()
+        widgetService.create("gadget")
+
+        assertThatThrownBy { widgetService.create("gadget") }
+            .isInstanceOf(BusinessException::class.java)
+            .hasMessage("Widget name 'gadget' already exists")
+    }
+
+    @Test
+    fun `update throws BusinessException for a name that already belongs to another widget`() {
+        val widgetService = service()
+        widgetService.create("gadget")
+        val other = widgetService.create("widget")
+
+        assertThatThrownBy { widgetService.update(other.id, "gadget") }
+            .isInstanceOf(BusinessException::class.java)
+            .hasMessage("Widget name 'gadget' already exists")
+    }
+
+    @Test
+    fun `update throws NotFoundException, not BusinessException, when the id is missing even though the name also conflicts`() {
+        val widgetService = service()
+        widgetService.create("gadget")
+        val id = UUID.randomUUID()
+
+        assertThatThrownBy { widgetService.update(id, "gadget") }
+            .isInstanceOf(NotFoundException::class.java)
+            .hasMessage("Widget $id not found")
+    }
+
+    @Test
+    fun `update allows renaming a widget to its own current name`() {
+        val widgetService = service()
+        val created = widgetService.create("gadget")
+
+        val updated = widgetService.update(created.id, "gadget")
+
+        assertThat(updated.name).isEqualTo("gadget")
     }
 
     @Test
