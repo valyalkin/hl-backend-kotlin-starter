@@ -119,7 +119,9 @@ violations.
 
 ### View API docs
 
-Not available yet — the OpenAPI JSON and `local`-only Swagger UI ship with the
-first REST resource in Epic 2. There is no local trace viewing in v1 either;
-trace export wiring (Epic 3) is configuration-only locally, with nothing to
-view without an external collector.
+`/v3/api-docs` serves the OpenAPI JSON document on every profile. Swagger UI
+(`/swagger-ui/index.html`) is available only under the `local` profile
+(`springdoc.swagger-ui.enabled: true`); every other profile returns 404 for
+it. There is no local trace viewing in v1 either; trace export wiring (Epic 3)
+is configuration-only locally, with nothing to view without an external
+collector.

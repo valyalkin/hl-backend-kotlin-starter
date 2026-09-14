@@ -46,3 +46,9 @@ management:
           # Boot's own readinessState plus the db and redis contributors: readiness
           # is UP only once Postgres and Redis are both reachable (AD-13, AD-17).
           include: readinessState,db,redis
+springdoc:
+  swagger-ui:
+    # Off by default on every profile; /v3/api-docs itself stays served on
+    # every profile via springdoc's own auto-configuration regardless of this
+    # flag (Story 2.10). Re-enabled only under application-local.yaml.
+    enabled: false

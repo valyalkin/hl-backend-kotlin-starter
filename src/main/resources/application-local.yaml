@@ -11,3 +11,8 @@ spring:
     url: jdbc:postgresql://localhost:5432/hl_service
     username: hl_service
     password: hl_service
+springdoc:
+  swagger-ui:
+    # Overrides the default-profile application.yaml (false) so local
+    # exploration via /swagger-ui/index.html works out of the box (Story 2.10).
+    enabled: true

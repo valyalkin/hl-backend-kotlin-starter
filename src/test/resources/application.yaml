@@ -22,3 +22,8 @@ management:
           # Boot's own readinessState plus the db and redis contributors: readiness
           # is UP only once Postgres and Redis are both reachable (AD-13, AD-17).
           include: readinessState,db,redis
+springdoc:
+  swagger-ui:
+    # Mirrors src/main/resources/application.yaml so the default-profile IT
+    # (OpenApiIT) sees the same disabled state as production (Story 2.10).
+    enabled: false

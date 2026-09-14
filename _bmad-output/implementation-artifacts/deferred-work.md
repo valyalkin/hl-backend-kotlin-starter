@@ -108,3 +108,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-8-cache-behavior-integration-test.md`
   summary: `RedisDownIT` stops a live Testcontainers Redis mid-test; an already-open Lettuce connection could in principle still succeed on the very next command before the OS/Docker layer surfaces the broken connection, risking a flaky pass in CI.
   evidence: edge-case-hunter review. Plausible in principle, but this diff's own `RedisDownIT` run passed cleanly (1/1, confirmed via its JUnit XML report) with no observed race. Unverified either way from a single run; settling this needs several repeated CI runs, or an explicit await-until-unreachable step before issuing the request. If real: intermittent CI flakiness (medium).
+
+## Deferred from: code review of spec-2-10-served-openapi-and-local-only-swagger-ui (2026-09-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-10-served-openapi-and-local-only-swagger-ui.md`
+  summary: `WidgetServiceCacheIT`'s "update evicts the Redis entry..." test intermittently fails only when the full suite runs together, though it passes reliably in isolation.
+  evidence: blind-hunter review. Story 2.10's own implementation subagent reproduced the same intermittent failure on unmodified baseline `main` (stashing this story's changes first), confirming it predates and is unrelated to this story's diff. Not logged anywhere actionable before now. Settle by running the full suite repeatedly to isolate the interacting test(s) (likely shared JVM-wide Testcontainers state or cache-key collision across suites), then fix the ordering/isolation issue.

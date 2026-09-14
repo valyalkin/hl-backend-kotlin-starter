@@ -60,6 +60,12 @@ dependencies {
     // cache-aside read path (Story 2.7). BOM-managed, no version literal
     // (AD-22).
     implementation("org.springframework.boot:spring-boot-starter-cache")
+    // Serves /v3/api-docs on every profile and /swagger-ui/** (gated by
+    // springdoc.swagger-ui.enabled) via auto-configuration alone -- no
+    // hand-written OpenApiCustomizer/GroupedOpenApi bean (Story 2.10).
+    // Version from the catalog (springdocOpenapi = 3.1.1), no literal here
+    // (AD-22-style single edit point).
+    implementation(libs.springdoc.openapi.starter.webmvc.ui)
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     // Shared JVM-wide Testcontainers base class (Story 2.2): @ServiceConnection
     // wiring plus the Postgres container. Both are BOM-managed, no version
