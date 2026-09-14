@@ -114,3 +114,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-10-served-openapi-and-local-only-swagger-ui.md`
   summary: `WidgetServiceCacheIT`'s "update evicts the Redis entry..." test intermittently fails only when the full suite runs together, though it passes reliably in isolation.
   evidence: blind-hunter review. Story 2.10's own implementation subagent reproduced the same intermittent failure on unmodified baseline `main` (stashing this story's changes first), confirming it predates and is unrelated to this story's diff. Not logged anywhere actionable before now. Settle by running the full suite repeatedly to isolate the interacting test(s) (likely shared JVM-wide Testcontainers state or cache-key collision across suites), then fix the ordering/isolation issue.
+
+## Deferred from: code review of spec-2-11-add-a-rest-resource-guide-and-example-slice-removal (2026-09-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-11-add-a-rest-resource-guide-and-example-slice-removal.md`
+  summary: README's "Package layout" section still claims "The starter ships with none of these classes yet," which Story 2.11's own new "Add a REST resource"/"Remove the Example Slice" sections contradict by naming the concrete `widgets` files that already exist.
+  evidence: blind-hunter review. Confirmed at `README.md`'s "Package layout" section, unchanged by this diff. Pre-existing since Story 2.1 first added `Widget*` classes, not caused by this story. Settle by updating that section's wording once a resource exists in the repo (now true since Epic 2 landed `widgets`).

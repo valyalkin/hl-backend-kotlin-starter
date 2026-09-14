@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 12:00
-last_updated: 09-13-2026 22:10
+last_updated: 09-14-2026 11:00
 project: hl-backend-kotlin-starter
 project_key: NOKEY
 tracking_system: file-system
@@ -57,7 +57,7 @@ development_status:
   2-8-cache-behavior-integration-test: review
   2-9-example-slice-coverage-at-both-levels: review
   2-10-served-openapi-and-local-only-swagger-ui: review
-  2-11-add-a-rest-resource-guide-and-example-slice-removal: backlog
+  2-11-add-a-rest-resource-guide-and-example-slice-removal: review
   epic-2-retrospective: optional
 
   epic-3: backlog

@@ -125,3 +125,110 @@ violations.
 it. There is no local trace viewing in v1 either; trace export wiring (Epic 3)
 is configuration-only locally, with nothing to view without an external
 collector.
+
+### Add a REST resource
+
+The `widgets` slice under `com.hl.service.*` is the copy-paste template for
+every future resource. Adding a resource -- `Gadget` in this example -- means
+creating the following files, one per concern package, mirroring the
+`widgets` slice file-for-file:
+
+| File | Concern package / location | Purpose |
+| --- | --- | --- |
+| `model/Gadget.kt` | `com.hl.service.model` | Plain immutable domain class |
+| `repository/GadgetEntity.kt` | `com.hl.service.repository` | `@Entity` JPA mapping to its table |
+| `repository/GadgetRepository.kt` | `com.hl.service.repository` | `JpaRepository<GadgetEntity, UUID>` interface |
+| `service/GadgetService.kt` | `com.hl.service.service` | `@Service` business logic; owns `@Transactional`, `@Cacheable` / `@CacheEvict` |
+| `controller/GadgetController.kt` | `com.hl.service.controller` | `@RestController`, e.g. `@RequestMapping("/api/v1/gadgets")` |
+| `dto/GadgetRequest.kt` | `com.hl.service.dto` | Request DTO |
+| `dto/GadgetResponse.kt` | `com.hl.service.dto` | Response DTO |
+| `db/migration/V<next>__create_gadgets.sql` | `src/main/resources/db/migration` | New Flyway migration -- next sequential `V` version (`widgets` is `V1`, so a second resource is `V2`); immutable once merged |
+
+Before naming `V<next>`, check the latest migration already merged on the
+integration branch, not just your local checkout -- two branches picking the
+same next version number in parallel will collide at merge time.
+
+Plus tests, mirroring the `widgets` slice's own test files one-for-one:
+
+- Unit Tests for the entity, service, and controller (e.g. `GadgetEntityTest`,
+  `GadgetServiceTest`, `GadgetServiceCacheTest`, `GadgetControllerTest`),
+  using a hand-written fake repository (`support/FakeGadgetRepository.kt`)
+  the same way `support/FakeWidgetRepository.kt` backs the widget Unit
+  Tests.
+- One or more Integration Tests that extend the shared
+  `support.IntegrationTestBase` (AD-21) rather than standing up their own
+  Testcontainers -- covering the repository against real Postgres (a
+  `GadgetRepositoryIT`), the cache against real Redis (a
+  `GadgetServiceCacheIT`), and the full HTTP-to-store path (a
+  `GadgetHttpToStoreIT`).
+
+Adding a resource this way is a zero-Plumbing change: every file above is
+new. Nothing about it requires editing a build file (`build.gradle.kts`,
+`settings.gradle.kts`), configuration (`application.yaml`), observability
+wiring, container config (`docker-compose.yaml`), or the CI workflow --
+`git diff --name-only` after adding a resource should show only new files
+under `src/main` and `src/test`, plus the new migration.
+
+### Remove the Example Slice
+
+Once a service has its own resources, the `widgets` slice can be deleted
+entirely. Delete these files:
+
+**Production**
+
+- `src/main/kotlin/com/hl/service/model/Widget.kt`
+- `src/main/kotlin/com/hl/service/repository/WidgetEntity.kt`
+- `src/main/kotlin/com/hl/service/repository/WidgetRepository.kt`
+- `src/main/kotlin/com/hl/service/service/WidgetService.kt`
+- `src/main/kotlin/com/hl/service/controller/WidgetController.kt`
+- `src/main/kotlin/com/hl/service/dto/WidgetRequest.kt`
+- `src/main/kotlin/com/hl/service/dto/WidgetResponse.kt`
+- `src/main/resources/db/migration/V1__create_widgets.sql` -- if Postgres has
+  already applied this migration in a prior `docker compose`/`bootRun`
+  session, deleting the file leaves Flyway's `schema_history` referencing a
+  migration that no longer exists on disk; with `validate-on-migrate: true`
+  and no repair configured, startup fails loudly. Reset the local volume
+  first (`docker compose down -v`) so Flyway starts from a clean database.
+
+**Test**
+
+- `src/test/kotlin/com/hl/service/WidgetHttpToStoreIT.kt`
+- `src/test/kotlin/com/hl/service/controller/WidgetControllerTest.kt`
+- `src/test/kotlin/com/hl/service/repository/WidgetEntityTest.kt`
+- `src/test/kotlin/com/hl/service/repository/WidgetRepositoryIT.kt`
+- `src/test/kotlin/com/hl/service/service/WidgetServiceCacheIT.kt`
+- `src/test/kotlin/com/hl/service/service/WidgetServiceCacheTest.kt`
+- `src/test/kotlin/com/hl/service/service/WidgetServiceTest.kt`
+- `src/test/kotlin/com/hl/service/support/FakeWidgetRepository.kt` -- not
+  `Widget*`-named, but widget-only test support with no other caller.
+
+Two more test files are not widget-named but hard-code the
+`/api/v1/widgets` path and must be edited, not deleted, or the build
+breaks:
+
+- `src/test/kotlin/com/hl/service/OpenApiIT.kt` -- the assertion
+  `assertThat(paths).containsKey("/api/v1/widgets")` must point at your own
+  resource's path instead (or be deleted if you have not added a
+  replacement resource yet).
+- `src/test/kotlin/com/hl/service/RedisDownIT.kt` -- both the
+  `.uri("/api/v1/widgets/$id")` request and the
+  `.jsonPath("\$.instance").isEqualTo("/api/v1/widgets/$id")` assertion
+  must point at your own resource's equivalent read-by-id path (or the
+  test deleted if no replacement resource exists yet).
+
+Both files' class/method doc comments also reference widgets by name (and
+`OpenApiIT.kt`'s test still has a `widgets path reflected` display name,
+plus `RedisDownIT.kt`'s class doc still cites the now-deleted
+`WidgetHttpToStoreIT`) -- update those doc comments and test names to match
+your own resource too, not just the two path assertions above.
+
+`SwaggerUiLocalProfileIT.kt` needs no edit -- it has no widget-specific
+assertions.
+
+`application.yaml`, `PageResponse.kt`, and `CacheConfig.kt` still mention
+"widget" in a doc comment after following this guide -- expected, cosmetic,
+unrelated Plumbing comments with no compile or runtime coupling; leave them
+as-is.
+
+After deleting the files and applying the two edits above, run
+`./gradlew build` and confirm it stays green.
