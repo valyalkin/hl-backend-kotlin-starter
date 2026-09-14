@@ -12,6 +12,10 @@ spring:
     validate-on-migrate: true
   cache:
     type: redis
+    # Mirrors src/main/resources/application.yaml (Story 3.1): pre-declares
+    # the "widgets" cache so its metrics are bound at CacheManager creation
+    # time, before PrometheusMetricsIT's GET /actuator/prometheus.
+    cache-names: widgets
     redis:
       time-to-live: 10m
 management:
@@ -22,6 +26,12 @@ management:
           # Boot's own readinessState plus the db and redis contributors: readiness
           # is UP only once Postgres and Redis are both reachable (AD-13, AD-17).
           include: readinessState,db,redis
+  endpoints:
+    web:
+      exposure:
+        # Mirrors src/main/resources/application.yaml (Story 3.1) so the
+        # default-profile ITs see the same widened exposure as production.
+        include: health,info,prometheus
 springdoc:
   swagger-ui:
     # Mirrors src/main/resources/application.yaml so the default-profile IT

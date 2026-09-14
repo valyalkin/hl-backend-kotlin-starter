@@ -45,11 +45,18 @@ class LivenessProbeIT(
 
     @Test
     fun `non-exposed actuator endpoint returns 404`() {
-        // Guards the "no actuator exposure config was added" boundary: only `health`
-        // is web-exposed by default, so `metrics` must not resolve.
+        // Guards the actuator exposure boundary: only `health,info,prometheus`
+        // are web-exposed (Story 3.1), so neither `metrics` nor `env` must
+        // resolve.
         client
             .get()
             .uri("/actuator/metrics")
+            .exchange()
+            .expectStatus()
+            .isNotFound
+        client
+            .get()
+            .uri("/actuator/env")
             .exchange()
             .expectStatus()
             .isNotFound

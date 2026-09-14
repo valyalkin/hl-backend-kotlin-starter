@@ -36,6 +36,10 @@ dependencies {
     implementation(platform(SpringBootPlugin.BOM_COORDINATES))
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    // Renders /actuator/prometheus in Prometheus text format from the metrics
+    // Actuator already collects (Story 3.1, AD-17). BOM-managed, no version
+    // literal (AD-22).
+    implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     // Spring Data JPA reflects on WidgetEntity's constructor via kotlin-reflect
     // because it is a Kotlin class; without it, repository bean creation fails

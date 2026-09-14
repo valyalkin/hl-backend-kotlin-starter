@@ -100,6 +100,24 @@ invoking `bootRun` — an explicit value always wins over the `local` default.
 When you're done, stop `bootRun` (`Ctrl-C`) and tear down the dependencies
 with `docker compose down`.
 
+### Metrics
+
+`/actuator/prometheus` serves JVM, HTTP server, datasource, and cache metrics
+in Prometheus text format, ready for a Prometheus server to scrape:
+
+```sh
+curl http://localhost:8080/actuator/prometheus
+```
+
+The response's `Content-Type` is Prometheus text format
+(`text/plain;version=0.0.4`); point a Prometheus server's scrape config at
+this same URL as its target and no further wiring is needed.
+
+Actuator's web exposure is widened to exactly `health`, `info`, and
+`prometheus` (Story 3.1) -- every other actuator endpoint, e.g.
+`/actuator/env`, stays hidden (404) on the same main port; there is no
+separate management port.
+
 ### Run tests
 
 ```sh
@@ -202,9 +220,9 @@ entirely. Delete these files:
 - `src/test/kotlin/com/hl/service/support/FakeWidgetRepository.kt` -- not
   `Widget*`-named, but widget-only test support with no other caller.
 
-Two more test files are not widget-named but hard-code the
-`/api/v1/widgets` path and must be edited, not deleted, or the build
-breaks:
+Three more test files are not widget-named but hard-code the
+`/api/v1/widgets` path (or a `widgets` cache/resource reference) and must be
+edited, not deleted, or the build breaks:
 
 - `src/test/kotlin/com/hl/service/OpenApiIT.kt` -- the assertion
   `assertThat(paths).containsKey("/api/v1/widgets")` must point at your own
@@ -215,12 +233,18 @@ breaks:
   `.jsonPath("\$.instance").isEqualTo("/api/v1/widgets/$id")` assertion
   must point at your own resource's equivalent read-by-id path (or the
   test deleted if no replacement resource exists yet).
+- `src/test/kotlin/com/hl/service/PrometheusMetricsIT.kt` -- imports
+  `WidgetRequest` and hard-codes `POST`/`GET /api/v1/widgets` to warm a
+  cache before scraping `/actuator/prometheus` (Story 3.1); point it at
+  your own resource's create/read-by-id calls instead (or drop that
+  warm-up and rely on your own resource's own cache Integration Test to
+  cover cache metrics, if none exists yet).
 
-Both files' class/method doc comments also reference widgets by name (and
-`OpenApiIT.kt`'s test still has a `widgets path reflected` display name,
-plus `RedisDownIT.kt`'s class doc still cites the now-deleted
+All three files' class/method doc comments also reference widgets by name
+(and `OpenApiIT.kt`'s test still has a `widgets path reflected` display
+name, plus `RedisDownIT.kt`'s class doc still cites the now-deleted
 `WidgetHttpToStoreIT`) -- update those doc comments and test names to match
-your own resource too, not just the two path assertions above.
+your own resource too, not just the path/request assertions above.
 
 `SwaggerUiLocalProfileIT.kt` needs no edit -- it has no widget-specific
 assertions.
@@ -228,7 +252,11 @@ assertions.
 `application.yaml`, `PageResponse.kt`, and `CacheConfig.kt` still mention
 "widget" in a doc comment after following this guide -- expected, cosmetic,
 unrelated Plumbing comments with no compile or runtime coupling; leave them
-as-is.
+as-is. The one exception is `spring.cache.cache-names: widgets` in both
+`src/main/resources/application.yaml` and `src/test/resources/application.yaml`
+(Story 3.1): that's a real runtime coupling, not cosmetic -- update it to
+your own resource's cache name (or drop the `widgets` entry) or its cache
+metrics silently stop appearing on `/actuator/prometheus`.
 
 After deleting the files and applying the two edits above, run
 `./gradlew build` and confirm it stays green.

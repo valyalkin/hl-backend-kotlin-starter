@@ -36,6 +36,14 @@ spring:
     # CacheManager bean. TTL applies to every cache, dynamically created
     # caches included.
     type: redis
+    # Pre-declares every @Cacheable cache name (just "widgets" today) as an
+    # initial cache on the autoconfigured RedisCacheManager. Micrometer's
+    # cache-metrics binder only sees caches that exist at CacheManager
+    # creation time (Story 3.1); without this, a Redis cache created lazily
+    # on first access is invisible to /actuator/prometheus. A future
+    # resource's own @Cacheable cache name must be added here too for its
+    # cache metrics to appear.
+    cache-names: widgets
     redis:
       time-to-live: 10m
 management:
@@ -46,6 +54,14 @@ management:
           # Boot's own readinessState plus the db and redis contributors: readiness
           # is UP only once Postgres and Redis are both reachable (AD-13, AD-17).
           include: readinessState,db,redis
+  endpoints:
+    web:
+      exposure:
+        # Widens web exposure from the default (health only) to exactly these
+        # three so a Prometheus server can scrape JVM/HTTP/datasource/cache
+        # metrics with zero application code (Story 3.1, AD-17). Same main
+        # port -- no management.server.port is introduced.
+        include: health,info,prometheus
 springdoc:
   swagger-ui:
     # Off by default on every profile; /v3/api-docs itself stays served on
