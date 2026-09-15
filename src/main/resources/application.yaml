@@ -47,6 +47,19 @@ spring:
     redis:
       time-to-live: 10m
 management:
+  tracing:
+    sampling:
+      # Every span is sampled by default (Story 3.2); overridable per
+      # environment via MANAGEMENT_TRACING_SAMPLING_PROBABILITY. Harmless
+      # while no OTLP endpoint is configured below -- sampled spans with
+      # nowhere to export to are simply dropped, not sent anywhere.
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+  # management.opentelemetry.tracing.export.otlp.endpoint is deliberately
+  # unset here: Boot's OTLP tracing auto-configuration only creates an
+  # OtlpHttpSpanExporter bean once this property has a value (Story 3.2), so
+  # omitting it keeps trace export a genuine no-op -- no exporter bean, no
+  # connection attempts, no export/connection-refused log lines -- on every
+  # profile that doesn't set MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT.
   endpoint:
     health:
       group:

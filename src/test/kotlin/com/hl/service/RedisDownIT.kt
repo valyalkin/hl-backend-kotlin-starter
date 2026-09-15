@@ -70,7 +70,13 @@ class RedisDownIT(
             .jsonPath("\$.instance")
             .isEqualTo("/api/v1/widgets/$id")
             .jsonPath("\$.traceId")
-            .exists()
+            // Not just .exists(): the field is always present even when
+            // empty (GlobalExceptionHandler.respond() sets it
+            // unconditionally), so this pins Story 3.2's "traceId is
+            // populated automatically" claim -- a regression in the OTel
+            // bridge/MDC wiring would otherwise silently revert this to
+            // `""` with every other traceId-touching test still green.
+            .isNotEmpty()
             .jsonPath("\$.code")
             .isEqualTo("SYSTEM_ERROR")
     }

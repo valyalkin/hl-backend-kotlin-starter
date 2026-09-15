@@ -19,6 +19,14 @@ spring:
     redis:
       time-to-live: 10m
 management:
+  tracing:
+    sampling:
+      # Mirrors src/main/resources/application.yaml (Story 3.2).
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+  # management.opentelemetry.tracing.export.otlp.endpoint stays unset here
+  # too, mirroring src/main/resources/application.yaml (Story 3.2); the
+  # default-profile Integration Tests must see the same no-op export as
+  # production. OtlpTracingIT sets it per-test via a dynamic property instead.
   endpoint:
     health:
       group:

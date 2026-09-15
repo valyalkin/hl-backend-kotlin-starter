@@ -118,6 +118,43 @@ Actuator's web exposure is widened to exactly `health`, `info`, and
 `/actuator/env`, stays hidden (404) on the same main port; there is no
 separate management port.
 
+### Tracing
+
+Distributed trace export (Story 3.2) is configuration-only -- there is no
+`@Configuration` class, custom `SpanExporter`, or other tracing Kotlin code.
+It is driven by two `management.*` properties:
+
+- `management.opentelemetry.tracing.export.otlp.endpoint` -- the OTLP/HTTP
+  collector URL (e.g. `http://localhost:4318/v1/traces`). **Unset by
+  default** on every checked-in profile, which is a genuine no-op: Boot's
+  OTLP tracing auto-configuration only creates an `OtlpHttpSpanExporter` bean
+  once this property has a value, so with it unset there is no exporter bean,
+  no export attempt, and no connection-refused log lines -- not merely a
+  silently-failing exporter pointed at a default `localhost` address. Set it
+  (env var `MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT`) to send
+  spans to a real collector.
+- `management.tracing.sampling.probability` -- fraction of traces sampled,
+  **defaults to `1.0`** (every trace) in this repo, overridable per
+  environment via `MANAGEMENT_TRACING_SAMPLING_PROBABILITY`. Sampled spans
+  are simply dropped, not sent anywhere, while the endpoint above is unset.
+
+Once the endpoint is configured, an inbound HTTP request and its outbound
+Redis cache-aside calls (Story 2.7) each produce a span automatically, with
+zero application code: Spring MVC's request instrumentation and Lettuce's own
+Micrometer Tracing integration both activate as soon as the OTel bridge
+dependency puts a `Tracer` bean in the context. Outbound Postgres/JDBC calls
+do **not** currently produce their own span -- Spring Boot has no built-in
+JDBC-level tracing instrumentation, so a request that only touches the
+database (no cache hit or miss) exports just the inbound HTTP span. The
+existing `traceId` field in error responses (`GlobalExceptionHandler`) is
+populated automatically too: the OTel bridge writes the active trace/span ids
+into SLF4J's MDC (keys `traceId`/`spanId`) as soon as it's on the classpath,
+independent of whether an endpoint is configured.
+
+There is no OTel collector or trace viewer in the Compose stack (out of scope
+for v1) -- point `management.opentelemetry.tracing.export.otlp.endpoint` at
+your own collector to see spans.
+
 ### Run tests
 
 ```sh
@@ -140,8 +177,8 @@ violations.
 `/v3/api-docs` serves the OpenAPI JSON document on every profile. Swagger UI
 (`/swagger-ui/index.html`) is available only under the `local` profile
 (`springdoc.swagger-ui.enabled: true`); every other profile returns 404 for
-it. There is no local trace viewing in v1 either; trace export wiring (Epic 3)
-is configuration-only locally, with nothing to view without an external
+it. There is no local trace viewing in v1 either; see [Tracing](#tracing) --
+trace export is configuration-only, with nothing to view without an external
 collector.
 
 ### Add a REST resource

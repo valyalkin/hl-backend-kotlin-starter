@@ -40,6 +40,18 @@ dependencies {
     // Actuator already collects (Story 3.1, AD-17). BOM-managed, no version
     // literal (AD-22).
     implementation("io.micrometer:micrometer-registry-prometheus")
+    // Bridges Micrometer's tracing API onto the OpenTelemetry SDK and adds the
+    // OTLP/HTTP span exporter, both driven purely by `management.*` properties
+    // (Story 3.2) -- no `@Configuration`/`SpanExporter` code. BOM-managed, no
+    // version literal (AD-22).
+    implementation("io.micrometer:micrometer-tracing-bridge-otel")
+    implementation("io.opentelemetry:opentelemetry-exporter-otlp")
+    // Boot 4 split spring-boot-autoconfigure into per-module artifacts; the
+    // OTLP tracing auto-configuration (including the `OtlpHttpSpanExporter`
+    // bean, created only once `management.opentelemetry.tracing.export.otlp.endpoint`
+    // is set) lives in this dedicated module, mirroring the Flyway split
+    // below. BOM-managed, no version literal (AD-22).
+    implementation("org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     // Spring Data JPA reflects on WidgetEntity's constructor via kotlin-reflect
     // because it is a Kotlin class; without it, repository bean creation fails
