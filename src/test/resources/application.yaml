@@ -18,6 +18,13 @@ spring:
     cache-names: widgets
     redis:
       time-to-live: 10m
+logging:
+  structured:
+    format:
+      # Mirrors src/main/resources/application.yaml (Story 3.3) so the
+      # default-profile Integration Tests -- including StructuredLoggingIT --
+      # see the same ECS structured console output as production.
+      console: ecs
 management:
   tracing:
     sampling:

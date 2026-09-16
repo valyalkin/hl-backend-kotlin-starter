@@ -46,6 +46,24 @@ spring:
     cache-names: widgets
     redis:
       time-to-live: 10m
+logging:
+  structured:
+    format:
+      # Spring Boot's built-in structured console logging (Story 3.3, AD-17):
+      # every stdout line becomes single-line ECS (Elastic Common Schema)
+      # JSON -- the vendor-neutral choice with no downstream log sink
+      # specified for this starter -- carrying at minimum @timestamp,
+      # log.level, log.logger, and message. No logging encoder dependency,
+      # no owned logback.xml/logback-spring.xml: this one property is the
+      # entire change. Story 3.2's Slf4JEventListener already writes
+      # MDC["traceId"]/MDC["spanId"] per active span; ECS's structured
+      # formatter spreads every MDC entry as its own top-level JSON field
+      # (confirmed by inspecting Boot 4.1.1's
+      # ElasticCommonSchemaStructuredLogFormatter), so a log line emitted
+      # while a request's span is active also carries top-level `traceId`
+      # and `spanId` fields with zero extra wiring. Overridden back to
+      # human-readable console output under application-local.yaml.
+      console: ecs
 management:
   tracing:
     sampling:

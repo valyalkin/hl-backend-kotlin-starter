@@ -155,6 +155,30 @@ There is no OTel collector or trace viewer in the Compose stack (out of scope
 for v1) -- point `management.opentelemetry.tracing.export.otlp.endpoint` at
 your own collector to see spans.
 
+### Logs
+
+Console logging is structured JSON (Story 3.3) on every profile except
+`local`, driven by one property -- `logging.structured.format.console: ecs`
+in `application.yaml` -- no logging encoder dependency, no owned
+`logback.xml`/`logback-spring.xml`. `ecs` is Spring Boot's built-in Elastic
+Common Schema formatter: the vendor-neutral choice for a starter template
+with no downstream log sink specified. Every stdout line becomes single-line
+JSON with at least `@timestamp`, a nested `log.level`/`log.logger`, and
+`message`; a line emitted while a request's span is active also carries
+top-level `traceId`/`spanId` fields, sourced automatically from the same
+MDC entries [Tracing](#tracing)'s OTel bridge already populates -- this
+story adds no MDC wiring of its own, only changes how the existing output is
+encoded:
+
+```json
+{"@timestamp":"2026-09-16T14:54:13.052509Z","log":{"level":"ERROR","logger":"com.hl.service.controller.GlobalExceptionHandler"},"message":"...","traceId":"4be59b06a48814ba225d82b52c94fb87","spanId":"c659c01cf9dd1693"}
+```
+
+The `local` profile overrides `logging.structured.format.console` back to an
+empty value in `application-local.yaml`, keeping the human-readable console
+pattern (the same colorized single-line format used before this story) for
+local development -- run `./gradlew bootRun` and check your terminal.
+
 ### Run tests
 
 ```sh

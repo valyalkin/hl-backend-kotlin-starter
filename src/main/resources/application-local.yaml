@@ -16,3 +16,17 @@ springdoc:
     # Overrides the default-profile application.yaml (false) so local
     # exploration via /swagger-ui/index.html works out of the box (Story 2.10).
     enabled: true
+logging:
+  structured:
+    format:
+      # Overrides the base application.yaml's `ecs` back to Boot's default
+      # human-readable console pattern for local development (Story 3.3).
+      # An explicit empty value, not an omitted key, is required: this file
+      # layers on top of (does not replace) the base application.yaml, and
+      # Boot only falls back to the plain PatternLayoutEncoder when the
+      # resolved `logging.structured.format.console` property is blank
+      # (confirmed by inspecting Boot 4.1.1's DefaultLogbackConfiguration,
+      # which feeds the merged property straight into
+      # `StringUtils.hasLength(...)`) -- an unset key here would leave the
+      # base profile's `ecs` value in effect.
+      console: ''
