@@ -1,9 +1,16 @@
+server:
+  # Mirrors src/main/resources/application.yaml (Story 3.4).
+  shutdown: graceful
 spring:
   # This file fully shadows the main application.yaml during tests, so it
   # needs to restate every key the Testcontainers-backed connection relies
   # on. Story 2.2's IntegrationTestBase supplies a real Postgres/Redis via
   # @ServiceConnection, so JPA/Datasource/Flyway auto-configuration are no
   # longer excluded here -- mirrors src/main/resources/application.yaml.
+  lifecycle:
+    # Mirrors src/main/resources/application.yaml (Story 3.4) so
+    # GracefulShutdownIT sees the same overridable timeout as production.
+    timeout-per-shutdown-phase: ${SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE:30s}
   jpa:
     hibernate:
       ddl-auto: validate

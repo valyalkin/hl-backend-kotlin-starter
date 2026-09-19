@@ -179,6 +179,35 @@ empty value in `application-local.yaml`, keeping the human-readable console
 pattern (the same colorized single-line format used before this story) for
 local development -- run `./gradlew bootRun` and check your terminal.
 
+### Shutdown
+
+Graceful shutdown (Story 3.4) is Spring Boot's built-in support only
+(`server.shutdown: graceful`) -- no custom `SmartLifecycle`, shutdown hook, or
+other shutdown Kotlin code, and it applies on every profile including
+`local`. On SIGTERM (or any `ApplicationContext` close, e.g. `Ctrl-C` against
+`bootRun`), the embedded server stops accepting new connections but lets
+in-flight requests finish before the process exits, instead of tearing them
+down immediately (Boot's default `server.shutdown=immediate`).
+
+The phase has a timeout -- `spring.lifecycle.timeout-per-shutdown-phase`,
+**defaults to `30s`** in this repo, overridable per environment via
+`SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE` (same pattern as
+[Tracing](#tracing)'s `MANAGEMENT_TRACING_SAMPLING_PROBABILITY`) -- after
+which the process exits regardless of any requests still in flight.
+
+The readiness probe (`/actuator/health/readiness`) also flips to `DOWN`
+automatically the instant shutdown begins, with zero extra wiring: Boot's
+`WebServerGracefulShutdownLifecycle` (only registered when
+`server.shutdown=graceful`) publishes an `AvailabilityChangeEvent(REFUSING_TRAFFIC)`
+from its `stop()` method, confirmed by decompiling
+`spring-boot-web-server-4.1.1.jar` -- so an orchestrator polling readiness
+stops routing new traffic here right away, independent of the connector-level
+rejection above.
+
+Real SIGTERM timing against the built image (rolling-deploy/pod-eviction
+behavior) is verified by Epic 4's documented local Kubernetes-contract check,
+not by an automated test in this repository.
+
 ### Run tests
 
 ```sh

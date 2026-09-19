@@ -1,4 +1,18 @@
+server:
+  # Boot's built-in graceful shutdown (Story 3.4, AD-17): on SIGTERM/context
+  # close, the embedded server stops accepting new requests but lets
+  # in-flight requests finish before the process exits, instead of tearing
+  # them down immediately (Boot's default `server.shutdown=immediate`). No
+  # custom SmartLifecycle/shutdown-hook code -- this one property is the
+  # entire change.
+  shutdown: graceful
 spring:
+  lifecycle:
+    # The graceful phase's timeout, overridable via
+    # SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE, same pattern as
+    # MANAGEMENT_TRACING_SAMPLING_PROBABILITY below. 30s equals Boot's own
+    # documented default -- spelled out here for discoverability.
+    timeout-per-shutdown-phase: ${SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE:30s}
   datasource:
     # No default: an unset SPRING_DATASOURCE_* env var must fail startup with a
     # clear "Could not resolve placeholder" error rather than degrade silently
