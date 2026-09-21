@@ -45,7 +45,9 @@ other setup is required.
 
 ### Prerequisites
 
-- **Docker** (with Compose) — runs the local Postgres and Redis.
+- **Docker** (with Compose) — runs the local Postgres and Redis, and its
+  daemon is also required by `./gradlew bootBuildImage` ([Container
+  image](#container-image)).
 - **A JDK on `PATH`, version 17–26** — needed only to launch the Gradle wrapper
   itself; the wrapper then downloads and runs the exact Gradle version
   (9.7.1), and the build's own toolchain provisions JDK 25 to compile and run
@@ -350,3 +352,63 @@ metrics silently stop appearing on `/actuator/prometheus`.
 
 After deleting the files and applying the two edits above, run
 `./gradlew build` and confirm it stays green.
+
+## Container image
+
+```sh
+./gradlew bootBuildImage
+```
+
+builds a runnable OCI image via Spring Boot's Gradle `bootBuildImage` task
+(Story 4.1) -- there is no `Dockerfile` in this repo, now or as a fallback,
+and none should be added. The builder is pinned to
+`paketobuildpacks/builder-noble-java-tiny:0.0.190`, an explicit tag rather
+than the floating `latest`, so a build today and a build next month pull the
+identical builder. `BP_JVM_CDS_ENABLED` and `BP_JVM_AOTCACHE_ENABLED` are
+both set to `false` in the task's `environment` -- Paketo's Java buildpack
+has an open defect ([spring-boot#581](https://github.com/paketo-buildpacks/spring-boot/issues/581))
+in its CDS/AOT-cache training run on the Java 25 + Spring Boot 4 combination
+this repo builds with. `bootBuildImage` is not wired into
+`check`/`build`/`test`; it stays a standalone task, consistent with Spring
+Boot's own default and the ~10-minute PR budget (Story 4.2 is the separate,
+non-image-building CI gate). On a clean machine, the first run needs
+outbound network/registry access to pull the pinned builder and run images
+(same first-run pull cost as [Run tests](#run-tests)'s Testcontainers
+images); later runs reuse the local Docker image cache.
+
+The built image runs as a non-root user by default -- the buildpack bakes a
+fixed non-root UID/GID into the image, with no Dockerfile `USER` line or
+other Plumbing needed -- and starts entirely from environment variables, the
+same `SPRING_DATASOURCE_*` / `SPRING_DATA_REDIS_*` properties
+[Run the service](#run-the-service) already uses. `--add-host=host.docker.internal:host-gateway`
+(Docker 20.10+ syntax) is included because native Linux Docker Engine, unlike
+Docker Desktop, does not resolve `host.docker.internal` back to the host
+automatically:
+
+```sh
+docker compose up -d
+docker run --rm -p 8080:8080 \
+  --add-host=host.docker.internal:host-gateway \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/hl_service \
+  -e SPRING_DATASOURCE_USERNAME=hl_service \
+  -e SPRING_DATASOURCE_PASSWORD=hl_service \
+  -e SPRING_DATA_REDIS_HOST=host.docker.internal \
+  -e BPL_JVM_HEAD_ROOM=10 \
+  hl-backend-kotlin-starter:0.0.1-SNAPSHOT
+curl http://localhost:8080/actuator/health/liveness
+curl http://localhost:8080/actuator/health/readiness
+```
+
+Both report `{"status":"UP"}` once Postgres/Redis are reachable, with no
+other configuration supplied.
+
+Heap sizing is never a fixed number in this repo. The buildpack's own
+container-aware memory calculator sizes `-Xmx` and friends from the
+container's actual memory limit at startup (visible in the container's own
+logs as `Calculated JVM Memory Configuration: ...`); there is no
+`-Xmx`/`-XX:MaxRAM`-style ceiling hardcoded anywhere here. Override the
+result per environment either with raw flags via `JAVA_TOOL_OPTIONS`, or with
+the buildpack's own `BPL_JVM_*` knobs (e.g. the `-e BPL_JVM_HEAD_ROOM=10` in
+the `docker run` example above, plus `BPL_JVM_THREAD_COUNT`,
+`BPL_JVM_LOADED_CLASS_COUNT`) that feed the calculator rather than bypassing
+it.

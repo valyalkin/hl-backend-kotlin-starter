@@ -1,4 +1,5 @@
 import org.springframework.boot.gradle.plugin.SpringBootPlugin
+import org.springframework.boot.gradle.tasks.bundling.BootBuildImage
 import org.springframework.boot.gradle.tasks.run.BootRun
 
 plugins {
@@ -112,4 +113,28 @@ tasks.named<BootRun>("bootRun") {
     if (!callerProfile.isPresent) {
         environment("SPRING_PROFILES_ACTIVE", "local")
     }
+}
+
+tasks.named<BootBuildImage>("bootBuildImage") {
+    // Pinned to an explicit, non-floating tag (not `latest`) so every build
+    // reproduces the same builder; confirmed current via `docker manifest
+    // inspect paketobuildpacks/builder-noble-java-tiny:latest` resolving to
+    // this same digest as of 2026-09-21 (AD-19). This pin will age as Paketo
+    // ships new builder releases and will need a manual bump over time.
+    builder = "paketobuildpacks/builder-noble-java-tiny:0.0.190"
+    // Both keys explicitly off: the Paketo Java buildpack has an open defect
+    // (https://github.com/paketo-buildpacks/spring-boot/issues/581) on
+    // Java 25 + Boot 4 for its CDS/AOT-cache training run. `BP_JVM_CDS_ENABLED`
+    // is the deprecated key, superseded by `BP_JVM_AOTCACHE_ENABLED` (both
+    // default to `false` upstream, per `paketo-buildpacks/spring-boot`'s own
+    // README) -- set both here so the build stays explicit rather than
+    // relying on an upstream default that could change. Heap sizing is
+    // unaffected: it stays the buildpack's container-aware calculator (no
+    // fixed memory/CPU ceiling here).
+    environment.set(
+        mapOf(
+            "BP_JVM_CDS_ENABLED" to "false",
+            "BP_JVM_AOTCACHE_ENABLED" to "false",
+        ),
+    )
 }
