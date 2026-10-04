@@ -553,3 +553,46 @@ docker rm hl-contract
 
 An actual cluster deployment -- manifests, Helm values, secrets, ingress,
 `imagePullSecret` -- is the charts repository's concern, not this check's.
+
+## Auth Seam
+
+**v1 posture: seam only, nothing enforced.** `config/SecurityConfig.kt`
+(Story 5.4) ships an OAuth2 resource-server configuration that is switched
+off by default. With it off, an explicit permit-all filter chain is installed
+and every endpoint behaves as if `spring-security` were not there; no
+generated password is created. The intended direction is Auth0 as the
+issuer, adopted by configuration alone, with no structural change.
+
+One property chooses between the two filter chains:
+
+| Key | Environment variable | Meaning |
+|---|---|---|
+| `app.auth.enabled` | `APP_AUTH_ENABLED` | `false` (default) permits everything; `true` requires a JWT. |
+| `spring.security.oauth2.resourceserver.jwt.issuer-uri` | `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` | **Required when enabled.** Tokens must carry this `iss`; signing keys are discovered from the issuer's OIDC metadata. For Auth0 this is `https://<tenant>.auth0.com/`. |
+| `spring.security.oauth2.resourceserver.jwt.audiences` | `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_AUDIENCES` | Expected `aud` value(s); tokens for any other audience are rejected. For Auth0, the API identifier. |
+| `spring.security.oauth2.resourceserver.jwt.jwk-set-uri` | `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI` | Optional JWKS URL, to fetch keys from somewhere other than the issuer's discovery document. |
+
+With `app.auth.enabled=true`:
+
+- A valid JWT is required on `/api/**` and on `/v3/api-docs` (the OpenAPI
+  JSON sits outside `/api/**` and would otherwise leak the schema), and on
+  every other path not listed below.
+- `/actuator/health` and its sub-paths (the liveness and readiness probes)
+  stay open, so Kubernetes can probe without a token.
+- Every other Actuator endpoint is token-gated. The exposed endpoints stay
+  `health`, `info` and `prometheus`, so a Prometheus scrape of
+  `/actuator/prometheus` needs a bearer token once the seam is on.
+- It fails safe: enabled without an `issuer-uri`, the context refuses to
+  start; it never falls back to allow-all. An issuer that is set but
+  unreachable is not a startup failure -- requests are rejected with 401
+  until the issuer can be reached.
+
+**Integration Tests with the seam on.** Tests run with it off by default, so
+existing ones need no token. To test authenticated behavior, extend
+`IntegrationTestBase` and follow `config/AuthSeamEnabledIT`: start a
+`support/TestIssuer` (a throwaway local OIDC issuer that serves discovery and
+JWKS and mints signed JWTs), point the properties above at it with
+`@DynamicPropertySource` (plus `app.auth.enabled=true`), and send
+`setBearerAuth(testIssuer.token(audience = ...))`. Mark such a class
+`@DirtiesContext(classMode = AFTER_CLASS)` so its extra Spring context does
+not exhaust the shared Postgres connection limit.
