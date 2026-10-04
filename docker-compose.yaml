@@ -2,6 +2,9 @@ services:
   postgres:
     image: ${POSTGRES_IMAGE}
     environment:
+      # Database name + credentials, one of two homes (Story 5.1, AD-16): the
+      # peer is application-local.yaml's datasource url/username/password.
+      # The pg_isready healthcheck below repeats the user and database name.
       POSTGRES_DB: hl_service
       POSTGRES_USER: hl_service
       POSTGRES_PASSWORD: hl_service

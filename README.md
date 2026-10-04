@@ -37,6 +37,29 @@ package.
 `StarterApplication.kt` sits directly under the root package and is the single
 `@SpringBootApplication` entry point.
 
+## The Four Parameters
+
+Turning the Starter into a Consumer Service means changing exactly four
+parameters and nothing else (AD-16). Each has one documented home; edit
+only these, and the checklist stays at four files.
+
+| Parameter | Where it lives | What to edit |
+|---|---|---|
+| Service name | `settings.gradle.kts` | `rootProject.name` -- the Gradle project name. Nothing else hard-codes it. |
+| Database name + credentials | `docker-compose.yaml` **and** `src/main/resources/application-local.yaml` | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` **and** the `pg_isready -U ... -d ...` healthcheck in the Compose file; `url` / `username` / `password` under `spring.datasource` in the local profile. Both files must agree -- changing only one leaves `bootRun` unable to connect. Deployed environments take these only from `SPRING_DATASOURCE_*` environment variables, never from the repo. |
+| HTTP port | `src/main/resources/application.yaml` | `server.port` (default `8080`); at runtime, override with `SERVER_PORT`. The `curl http://localhost:8080/...` and `docker run -p 8080:8080` examples in this README use 8080 and need the same change. |
+| Image name | derived, no edit | The local image is named from the Gradle project name (`rootProject.name` above), and CI publishes to `ghcr.io/<owner>/<repo>` from the GitHub repository name. Name the repository after the service and the image name follows. The `docker run` examples below use the local name. |
+
+Two things are deliberately **not** parameters:
+
+- The root `.env` holds only the Postgres and Redis container image tags
+  (`POSTGRES_IMAGE`, `REDIS_IMAGE`). It is plumbing, shared by the Compose
+  stack and the Integration Tests, and is not a home for any of the four
+  parameters.
+- The base package `com.hl.service` and the seven concern package names
+  under it (see [Package layout](#package-layout)) are invariant and are
+  never renamed.
+
 ## Local development
 
 Following the steps below top to bottom, on a clean machine with only Docker and

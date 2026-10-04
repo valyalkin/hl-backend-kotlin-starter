@@ -1,4 +1,8 @@
 server:
+  # The HTTP port's one home (Story 5.1, AD-16): change this default, or set
+  # SERVER_PORT at runtime. Nothing else in the repo hard-codes the port; the
+  # README's curl/`docker run -p` examples use 8080 and need the same edit.
+  port: ${SERVER_PORT:8080}
   # Boot's built-in graceful shutdown (Story 3.4, AD-17): on SIGTERM/context
   # close, the embedded server stops accepting new requests but lets
   # in-flight requests finish before the process exits, instead of tearing
