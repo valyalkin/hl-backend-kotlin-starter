@@ -227,6 +227,16 @@ images; later runs reuse the local Docker image cache. `build` also runs the
 format/lint check; `./gradlew spotlessApply` auto-fixes formatting
 violations.
 
+### Continuous integration
+
+`.github/workflows/ci.yaml` runs `./gradlew build` (format check, Unit Tests,
+Integration Tests) on `ubuntu-latest` for every pull request, with Gradle's
+dependency and build caches restored between runs. Integration Tests use
+Testcontainers on the runner's own Docker, so the workflow declares no
+service containers. A workflow cannot block a merge by itself: in the
+repository's settings, add a branch protection rule (or ruleset) for `main`
+that requires the `build` check to pass before merging.
+
 ### View API docs
 
 `/v3/api-docs` serves the OpenAPI JSON document on every profile. Swagger UI
