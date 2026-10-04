@@ -60,6 +60,29 @@ Two things are deliberately **not** parameters:
   under it (see [Package layout](#package-layout)) are invariant and are
   never renamed.
 
+### No generator in v1
+
+No generator, rename script, or scaffolding automation ships in v1, and none
+should be left half-built in the repo. This is deliberate: the checklist
+above is small enough (four files) that a script would cost more to maintain
+than it saves, and it is written to be the spec of a future generator, which
+would replace exactly these manual steps:
+
+1. Create the new repository from this one, named after the service (this
+   sets the published image name).
+2. Set `rootProject.name` in `settings.gradle.kts` to the service name.
+3. Set the database name, user and password in `docker-compose.yaml`
+   (including the `pg_isready` healthcheck) and in
+   `application-local.yaml`, keeping the two in agreement.
+4. Set `server.port` in `application.yaml` if 8080 is not wanted, and update
+   the README's port-bearing examples to match.
+5. In the repository's settings, require the `build` check on `main` (see
+   [Continuous integration](#continuous-integration)) and confirm the
+   published package is private after the first publish.
+
+Anything beyond these steps (removing the Example Slice, adding resources) is
+domain work, not parameterization.
+
 ## Local development
 
 Following the steps below top to bottom, on a clean machine with only Docker and
