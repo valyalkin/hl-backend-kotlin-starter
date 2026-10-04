@@ -83,6 +83,12 @@ dependencies {
     // Version from the catalog (springdocOpenapi = 3.1.1), no literal here
     // (AD-22-style single edit point).
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
+    // Auth Seam (Story 5.4, AD-18): security filter chains plus the OAuth2
+    // resource-server JWT support behind the enabled chain. Inert by default
+    // (an explicit permit-all chain is installed); BOM-managed, no version
+    // literal (AD-22).
+    implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     // Shared JVM-wide Testcontainers base class (Story 2.2): @ServiceConnection
     // wiring plus the Postgres container. Both are BOM-managed, no version

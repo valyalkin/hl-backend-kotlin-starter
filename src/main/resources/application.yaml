@@ -1,3 +1,10 @@
+app:
+  auth:
+    # The Auth Seam switch (Story 5.4, AD-18). Off: an explicit permit-all
+    # filter chain, nothing enforced. On: JWT required on everything except
+    # /actuator/health**, and startup fails unless
+    # spring.security.oauth2.resourceserver.jwt.issuer-uri is set.
+    enabled: ${APP_AUTH_ENABLED:false}
 server:
   # The HTTP port's one home (Story 5.1, AD-16): change this default, or set
   # SERVER_PORT at runtime. Nothing else in the repo hard-codes the port; the
