@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatusCode
 import org.springframework.http.MediaType
 import org.springframework.http.ProblemDetail
 import org.springframework.http.ResponseEntity
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
@@ -66,6 +67,25 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
     // (ExceptionDepthComparator), independent of where either method is declared
     // in this class, so this handler always wins over handleUnexpected's
     // `Exception::class` for these exception types.
+
+    /**
+     * A concurrent update to the same row lost the optimistic-lock race
+     * (`WidgetEntity.version`): 409 with the `BUSINESS_ERROR` code, retryable
+     * by the client re-reading and re-submitting.
+     */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException::class)
+    fun handleConcurrentUpdate(
+        ex: ObjectOptimisticLockingFailureException,
+        request: HttpServletRequest,
+    ): ResponseEntity<Any> =
+        respond(
+            HttpStatus.CONFLICT,
+            "BUSINESS_ERROR",
+            IllegalStateException("The resource was modified concurrently; re-read it and retry"),
+            emptyMap(),
+            request,
+        )
+
     @ExceptionHandler(
         RedisConnectionFailureException::class,
         RedisSystemException::class,

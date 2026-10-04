@@ -88,6 +88,11 @@ dependencies {
     // Version from the catalog (springdocOpenapi = 3.1.1), no literal here
     // (AD-22-style single edit point).
     implementation(libs.springdoc.openapi.starter.webmvc.ui)
+    // Wraps the DataSource in a proxy that emits a Micrometer span per JDBC
+    // statement, so a database-only request exports an outbound-call span too
+    // (Spring Boot has no built-in JDBC tracing). Not BOM-managed: version from
+    // the catalog (AD-22). Driven by auto-configuration alone, no code.
+    implementation(libs.datasource.micrometer.spring.boot)
     // Auth Seam (Story 5.4, AD-18): security filter chains plus the OAuth2
     // resource-server JWT support behind the enabled chain. Inert by default
     // (an explicit permit-all chain is installed); BOM-managed, no version

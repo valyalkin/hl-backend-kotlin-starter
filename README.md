@@ -235,9 +235,12 @@ Redis cache-aside calls (Story 2.7) each produce a span automatically, with
 zero application code: Spring MVC's request instrumentation and Lettuce's own
 Micrometer Tracing integration both activate as soon as the OTel bridge
 dependency puts a `Tracer` bean in the context. Outbound Postgres/JDBC calls
-do **not** currently produce their own span -- Spring Boot has no built-in
-JDBC-level tracing instrumentation, so a request that only touches the
-database (no cache hit or miss) exports just the inbound HTTP span. The
+get their own spans too, from the `datasource-micrometer-spring-boot`
+dependency (pinned in `gradle/libs.versions.toml` since Spring Boot has no
+built-in JDBC tracing, and the Boot BOM does not manage it): each statement
+exports a `query` span whose `jdbc.query[0]` attribute holds the SQL text with
+`?` placeholders, never the bound parameter values. Flyway's migration
+statements are traced the same way. The
 existing `traceId` field in error responses (`GlobalExceptionHandler`) is
 populated automatically too: the OTel bridge writes the active trace/span ids
 into SLF4J's MDC (keys `traceId`/`spanId`) as soon as it's on the classpath,
@@ -355,13 +358,13 @@ creating the following files, one per concern package, mirroring the
 | File | Concern package / location | Purpose |
 | --- | --- | --- |
 | `model/Gadget.kt` | `com.hl.service.model` | Plain immutable domain class |
-| `repository/GadgetEntity.kt` | `com.hl.service.repository` | `@Entity` JPA mapping to its table |
+| `repository/GadgetEntity.kt` | `com.hl.service.repository` | `@Entity` JPA mapping to its table; carries a `@Version` optimistic-lock column, as `WidgetEntity` does (its migration adds `version BIGINT NOT NULL DEFAULT 0`) |
 | `repository/GadgetRepository.kt` | `com.hl.service.repository` | `JpaRepository<GadgetEntity, UUID>` interface |
 | `service/GadgetService.kt` | `com.hl.service.service` | `@Service` business logic; owns `@Transactional`, `@Cacheable` / `@CacheEvict` |
 | `controller/GadgetController.kt` | `com.hl.service.controller` | `@RestController`, e.g. `@RequestMapping("/api/v1/gadgets")` |
 | `dto/GadgetRequest.kt` | `com.hl.service.dto` | Request DTO |
 | `dto/GadgetResponse.kt` | `com.hl.service.dto` | Response DTO |
-| `db/migration/V<next>__create_gadgets.sql` | `src/main/resources/db/migration` | New Flyway migration -- next sequential `V` version (`widgets` is `V1`, so a second resource is `V2`); immutable once merged |
+| `db/migration/V<next>__create_gadgets.sql` | `src/main/resources/db/migration` | New Flyway migration -- next sequential `V` version (`widgets` uses `V1` and `V2`, so the next resource is `V3`); immutable once merged |
 
 Before naming `V<next>`, check the latest migration already merged on the
 integration branch, not just your local checkout -- two branches picking the
@@ -385,7 +388,7 @@ When copying the `widgets` tests, give the new resource its own sample
 values: the widget tests use the literal names `widget` and `gadget` as two
 distinct sample names, so a blind find-and-replace of `widget` with `gadget`
 makes them collide. Mirroring the whole slice this way (a second resource,
-renamed, migration `V2`) builds green with all tests passing.
+renamed, with its own migration) builds green with all tests passing.
 
 Adding a resource this way is a zero-Plumbing change: every file above is
 new. Nothing about it requires editing a build file (`build.gradle.kts`,
@@ -408,7 +411,8 @@ entirely. Delete these files:
 - `src/main/kotlin/com/hl/service/controller/WidgetController.kt`
 - `src/main/kotlin/com/hl/service/dto/WidgetRequest.kt`
 - `src/main/kotlin/com/hl/service/dto/WidgetResponse.kt`
-- `src/main/resources/db/migration/V1__create_widgets.sql` -- if Postgres has
+- `src/main/resources/db/migration/V2__add_widget_version.sql` and
+  `src/main/resources/db/migration/V1__create_widgets.sql` -- if Postgres has
   already applied this migration in a prior `docker compose`/`bootRun`
   session, deleting the file leaves Flyway's `schema_history` referencing a
   migration that no longer exists on disk; with `validate-on-migrate: true`
@@ -418,6 +422,7 @@ entirely. Delete these files:
 **Test**
 
 - `src/test/kotlin/com/hl/service/WidgetHttpToStoreIT.kt`
+- `src/test/kotlin/com/hl/service/repository/WidgetOptimisticLockIT.kt`
 - `src/test/kotlin/com/hl/service/controller/WidgetControllerTest.kt`
 - `src/test/kotlin/com/hl/service/repository/WidgetEntityTest.kt`
 - `src/test/kotlin/com/hl/service/repository/WidgetRepositoryIT.kt`
@@ -427,9 +432,16 @@ entirely. Delete these files:
 - `src/test/kotlin/com/hl/service/support/FakeWidgetRepository.kt` -- not
   `Widget*`-named, but widget-only test support with no other caller.
 
-Three more test files are not widget-named but hard-code the
+More test files are not widget-named but use `WidgetRequest` or hard-code the
 `/api/v1/widgets` path (or a `widgets` cache/resource reference) and must be
-edited, not deleted, or the build breaks:
+edited, not deleted, or the build or their assertions break. Besides the three
+described below, point `GracefulShutdownIT`, `OtlpTracingExportIT`,
+`OtlpTracingNoOpIT` (all use `WidgetRequest` and the widgets endpoint),
+`FrameworkErrorContractIT`, `config/AuthSeamDisabledIT` and
+`config/AuthSeamEnabledIT` (all hit `/api/v1/widgets`) at your own resource.
+`GracefulShutdownIT` also uses `SlowWidgetRepositoryConfig`, so give it an
+equivalent slow-repository stand-in for your resource first. The three
+described in detail:
 
 - `src/test/kotlin/com/hl/service/OpenApiIT.kt` -- the assertion
   `assertThat(paths).containsKey("/api/v1/widgets")` must point at your own

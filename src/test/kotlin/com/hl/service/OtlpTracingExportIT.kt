@@ -108,6 +108,15 @@ class OtlpTracingExportIT(
             .contains("db.system")
             .contains("redis")
             .contains("SET")
+        // datasource-micrometer's JDBC proxy (a catalog-pinned dependency,
+        // auto-configured, no application code) adds a span per statement
+        // carrying the SQL text in `jdbc.query[0]`: the widget lookup/insert
+        // this request performs must appear, so a database-only call is no
+        // longer invisible to tracing.
+        assertThat(bodyAsLatin1)
+            .describedAs("exported span data must include an outbound JDBC statement span")
+            .contains("jdbc.query")
+            .contains("from widgets")
     }
 
     companion object {

@@ -5,6 +5,7 @@ import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.UUID
@@ -18,6 +19,11 @@ import java.util.UUID
  * gives Hibernate the no-arg constructor JPA requires while still letting
  * callers use the primary constructor directly. Properties are `var` so
  * Hibernate's field-access strategy can populate them by reflection.
+ *
+ * [version] is the optimistic-lock column: `null` for a new entity (so Spring
+ * Data persists it rather than merging), then managed by Hibernate. It stays
+ * on the entity and is not exposed through [Widget] or the API; the guarantee
+ * is that two concurrent read-modify-write updates cannot both succeed.
  */
 @Entity
 @Table(name = "widgets")
@@ -33,6 +39,9 @@ class WidgetEntity
         var createdAt: Instant = Instant.now(),
         @Column(name = "updated_at", nullable = false)
         var updatedAt: Instant = Instant.now(),
+        @Version
+        @Column(name = "version", nullable = false)
+        var version: Long? = null,
     ) {
         fun toDomain(): Widget =
             Widget(

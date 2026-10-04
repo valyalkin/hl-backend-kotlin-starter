@@ -1,20 +1,6 @@
 # Deferred work
 
-Open items only. Items settled on 2026-10-04 (README filename rule and datasource env vars; lint-gate proof in CI; test failure logging; Kotlin JPA entities and DB-backed persistence tests; readiness and cache Integration Tests; framework-error `code`/`traceId`; other Redis exception types; `URI.create` guard; cache-after-commit advisor order; `jackson-module-kotlin`; main-vs-test YAML parity test; stale README package-layout text) were fixed or found already done and removed from this file; `git log -p` has the history.
-
-## Needs a human decision
-
-- source_spec: `spec-1-1-gradle-build-skeleton-with-a-version-catalog.md`
-  summary: Add a top-level LICENSE file -- the repository is meant to be cloned/forked but carries no license.
-  evidence: Which license (or none, as an internal-only foundation) is the owner's call; not chosen yet.
-
-- source_spec: `spec-2-4-widget-service-operations.md`
-  summary: `WidgetService.update` has no optimistic locking, so two concurrent updates to the same widget can silently lose one write.
-  evidence: Fix is a `@Version` column on `WidgetEntity` plus a migration and a concurrency test; it changes the schema of the reference slice every clone inherits, so it needs a decision on whether the Example Slice should model it.
-
-- source_spec: `spec-3-2-otlp-trace-export-no-op-when-unconfigured.md`
-  summary: Add JDBC/Postgres span export so a database-only request also produces an outbound-call span.
-  evidence: Spring Boot 4.1.1 has no built-in JDBC tracing; the only fix is a third-party datasource-proxy library, which is not BOM-managed and conflicts with Story 3.2's frozen BOM-only constraint (AD-22). Needs an explicit exception or a decision to leave it.
+Open items only. Items settled on 2026-10-04 (README filename rule and datasource env vars; lint-gate proof in CI; test failure logging; Kotlin JPA entities and DB-backed persistence tests; readiness and cache Integration Tests; framework-error `code`/`traceId`; other Redis exception types; `URI.create` guard; cache-after-commit advisor order; `jackson-module-kotlin`; main-vs-test YAML parity test; stale README package-layout text; and, after the owner's decisions, no LICENSE by design, optimistic locking via `WidgetEntity.version`, and JDBC tracing via `datasource-micrometer-spring-boot`) were fixed or found already done and removed from this file; `git log -p` has the history.
 
 ## Known, accepted trade-offs
 

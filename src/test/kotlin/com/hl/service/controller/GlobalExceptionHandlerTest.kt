@@ -8,6 +8,7 @@ import org.springframework.dao.QueryTimeoutException
 import org.springframework.data.redis.RedisSystemException
 import org.springframework.data.redis.serializer.SerializationException
 import org.springframework.http.MediaType
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
@@ -39,6 +40,9 @@ class GlobalExceptionHandlerTest {
 
         @GetMapping("/test/unexpected")
         fun unexpected(): Nothing = throw IllegalStateException("boom")
+
+        @GetMapping("/test/conflict")
+        fun conflict(): Nothing = throw ObjectOptimisticLockingFailureException("Widget", java.util.UUID.randomUUID())
 
         @GetMapping("/test/redis-system")
         fun redisSystem(): Nothing = throw RedisSystemException("redis broke", RuntimeException("x"))
@@ -182,5 +186,17 @@ class GlobalExceptionHandlerTest {
         org.assertj.core.api.Assertions
             .assertThat((response.body as org.springframework.http.ProblemDetail).instance)
             .isNull()
+    }
+
+    @Test
+    fun `renders a lost optimistic-lock race as 409 with a retry message`() {
+        mockMvc
+            .get("/test/conflict")
+            .andExpect {
+                status { isConflict() }
+                content { contentType(MediaType.APPLICATION_PROBLEM_JSON) }
+                jsonPath("$.code") { value("BUSINESS_ERROR") }
+                jsonPath("$.detail") { value("The resource was modified concurrently; re-read it and retry") }
+            }
     }
 }
