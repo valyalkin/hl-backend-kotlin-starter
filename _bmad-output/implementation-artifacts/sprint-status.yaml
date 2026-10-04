@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 12:00
-last_updated: 10-04-2026 12:00
+last_updated: 10-04-2026 13:00
 project: hl-backend-kotlin-starter
 project_key: NOKEY
 tracking_system: file-system
@@ -70,7 +70,7 @@ development_status:
   epic-4: in-progress
   4-1-image-built-via-bootbuildimage: review
   4-2-ci-builds-and-tests-every-pull-request: review
-  4-3-ci-publishes-the-image-on-push-to-main: backlog
+  4-3-ci-publishes-the-image-on-push-to-main: review
   4-4-kubernetes-runtime-contract-verified-locally: backlog
   epic-4-retrospective: optional
 

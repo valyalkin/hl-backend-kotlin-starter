@@ -237,6 +237,15 @@ service containers. A workflow cannot block a merge by itself: in the
 repository's settings, add a branch protection rule (or ruleset) for `main`
 that requires the `build` check to pass before merging.
 
+On a push to `main`, once that build is green, a `publish` job builds the
+image and pushes it to `ghcr.io/<owner>/<repo>`, tagged with the git short SHA
+and `latest` (no semver tags in v1). It authenticates with the workflow's
+built-in `GITHUB_TOKEN` under `permissions: packages: write`, so there is no
+registry secret to store or rotate; other branches and failing builds publish
+nothing. The package is private by default for a new package; confirm that in
+the package's settings on GitHub after the first publish (visibility is a
+GitHub setting, not something the workflow controls).
+
 ### View API docs
 
 `/v3/api-docs` serves the OpenAPI JSON document on every profile. Swagger UI
