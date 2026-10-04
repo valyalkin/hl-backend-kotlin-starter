@@ -11,6 +11,14 @@ spring:
     # Mirrors src/main/resources/application.yaml (Story 3.4) so
     # GracefulShutdownIT sees the same overridable timeout as production.
     timeout-per-shutdown-phase: ${SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE:30s}
+  datasource:
+    hikari:
+      # Every distinct cached Spring test context holds its own pool against
+      # the one JVM-shared Postgres (default max_connections=100). Boot's
+      # default pool of 10 let ~10 contexts exhaust it ("too many clients"),
+      # an intermittent failure that grows with each new resource's tests.
+      # Tests need only a couple of connections per context.
+      maximum-pool-size: 3
   jpa:
     hibernate:
       ddl-auto: validate

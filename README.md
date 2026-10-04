@@ -3,6 +3,18 @@
 A Spring Boot (Kotlin) starter service. This repository is cloned to create a new
 Consumer Service.
 
+The five essential tasks, each with its own section:
+
+1. [The Four Parameters](#the-four-parameters) -- what to change when cloning,
+   and where each parameter lives.
+2. [Add a REST resource](#add-a-rest-resource) -- copy the `widgets` slice.
+3. [Local development](#local-development) -- bring up dependencies, run, test.
+4. [Auth Seam](#auth-seam) -- how to switch authentication on.
+5. [Observability endpoints](#observability-endpoints) -- health, metrics,
+   traces, logs, API docs.
+
+What v1 deliberately leaves out is listed in [Scope](#scope-what-v1-leaves-out).
+
 ## Package layout
 
 The root package is `com.hl.service` and is invariant — it is never renamed when
@@ -23,10 +35,10 @@ prefix (`Widget*`) if a package grows large.
 | `com.hl.service.error` | Exception types (`BusinessException`, `NotFoundException`, `SystemException`) |
 | `com.hl.service.config` | `@Configuration` classes and framework wiring |
 
-The starter ships with none of these classes yet — the table describes where
-each kind of code belongs as the service is built out. Every package directory
-currently holds only an empty `.gitkeep` so it survives a fresh clone; delete
-that file once the package contains a real class.
+The table describes where each kind of code belongs. The `widgets` Example
+Slice (see [Add a REST resource](#add-a-rest-resource)) is the working
+reference for every concern package; the `config` package holds
+`CacheConfig` and `SecurityConfig`.
 
 Dependencies point the conventional Spring direction — controller → service →
 repository — but this layout is a **naming convention only**. There is no
@@ -360,6 +372,12 @@ Plus tests, mirroring the `widgets` slice's own test files one-for-one:
   `GadgetServiceCacheIT`), and the full HTTP-to-store path (a
   `GadgetHttpToStoreIT`).
 
+When copying the `widgets` tests, give the new resource its own sample
+values: the widget tests use the literal names `widget` and `gadget` as two
+distinct sample names, so a blind find-and-replace of `widget` with `gadget`
+makes them collide. Mirroring the whole slice this way (a second resource,
+renamed, migration `V2`) builds green with all tests passing.
+
 Adding a resource this way is a zero-Plumbing change: every file above is
 new. Nothing about it requires editing a build file (`build.gradle.kts`,
 `settings.gradle.kts`), configuration (`application.yaml`), observability
@@ -440,6 +458,34 @@ metrics silently stop appearing on `/actuator/prometheus`.
 
 After deleting the files and applying the two edits above, run
 `./gradlew build` and confirm it stays green.
+
+## Observability endpoints
+
+Observability is configuration, never code (AD-17); everything is served on
+the main HTTP port, with nothing extra to wire:
+
+| What | Where | Details |
+|---|---|---|
+| Liveness / readiness | `/actuator/health/liveness`, `/actuator/health/readiness` | Spring Boot's default probe paths; readiness also needs Postgres and Redis. See [Run the service](#run-the-service). |
+| Metrics | `/actuator/prometheus` | Prometheus text format. See [Metrics](#metrics). |
+| Traces | OTLP export | Off until an endpoint is configured. See [Tracing](#tracing). |
+| Logs | stdout | Structured JSON with trace correlation outside the `local` profile. See [Logs](#logs). |
+| API docs | `/v3/api-docs` (all profiles), `/swagger-ui/index.html` (`local` only) | See [View API docs](#view-api-docs). |
+
+Only `health`, `info` and `prometheus` are exposed under `/actuator`. With
+the [Auth Seam](#auth-seam) on, `/actuator/health**` stays open and the other
+endpoints need a token. [Shutdown](#shutdown) covers graceful termination.
+
+## Scope: what v1 leaves out
+
+Deliberately not in v1: a service **generator** (the [Four
+Parameters](#the-four-parameters) checklist is its future spec), **Helm
+charts and cluster manifests** (a separate charts repository), **messaging**,
+**auth enforcement** (the [Auth Seam](#auth-seam) ships inactive), and
+**Vault** or other secret management (configuration is environment-only).
+The reasoning is in the product brief and its addendum
+(`_bmad-output/planning-artifacts/briefs/brief-hl-backend-kotlin-starter-2026-09-07/brief.md`
+and `addendum.md`), and the PRD beside them in `planning-artifacts/prds/`.
 
 ## Container image
 
