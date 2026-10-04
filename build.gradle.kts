@@ -137,4 +137,28 @@ tasks.named<BootBuildImage>("bootBuildImage") {
             "BP_JVM_AOTCACHE_ENABLED" to "false",
         ),
     )
+
+    // CI-only publishing (Story 4.3, AD-20). Everything below is driven by
+    // environment variables that only the `publish` job in
+    // .github/workflows/ci.yaml sets, so a local `./gradlew bootBuildImage`
+    // is unchanged: it builds a local image and publishes nothing.
+    // IMAGE_TAGS is a comma-separated list of extra tags (short SHA, latest).
+    providers.environmentVariable("IMAGE_TAGS").orNull?.let { csv ->
+        tags.set(csv.split(',').map { it.trim() }.filter { it.isNotEmpty() })
+    }
+    // Links the package to the repository so it inherits the repo's access.
+    providers.environmentVariable("IMAGE_SOURCE").orNull?.let { source ->
+        environment.put("BP_OCI_SOURCE", source)
+    }
+    val registryPassword = providers.environmentVariable("REGISTRY_PASSWORD")
+    if (registryPassword.isPresent) {
+        publish.set(true)
+        docker {
+            publishRegistry {
+                url.set("https://ghcr.io")
+                username.set(providers.environmentVariable("REGISTRY_USERNAME"))
+                password.set(registryPassword)
+            }
+        }
+    }
 }
