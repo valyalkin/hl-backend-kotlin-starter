@@ -46,6 +46,10 @@ ArchUnit test, dependency-direction check, or any other build-time boundary
 enforcement: nothing fails the build if a resource places a class in a different
 package.
 
+Kotlin source file names must be PascalCase: ktlint's `standard:filename` rule
+fails `./gradlew check` for a lowercase or underscore-prefixed `.kt` file
+name.
+
 `StarterApplication.kt` sits directly under the root package and is the single
 `@SpringBootApplication` entry point.
 
@@ -179,6 +183,11 @@ taken, stop whatever's using it first. To run against something other than
 the Compose stack, export `SPRING_PROFILES_ACTIVE` (or the individual
 `SPRING_DATASOURCE_*` / `SPRING_DATA_REDIS_*` variables) yourself before
 invoking `bootRun` — an explicit value always wins over the `local` default.
+Any run other than `local` (a container, a deployed environment) must supply
+`SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME` and
+`SPRING_DATASOURCE_PASSWORD`; there are no defaults, so startup fails with an
+unresolved-placeholder error if one is missing. An exported
+`SPRING_DATASOURCE_*` variable also overrides the `local` profile's values.
 
 When you're done, stop `bootRun` (`Ctrl-C`) and tear down the dependencies
 with `docker compose down`.

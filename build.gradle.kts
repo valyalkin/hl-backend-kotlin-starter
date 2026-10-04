@@ -62,6 +62,11 @@ dependencies {
     // surfaces it. Version aligned to the Kotlin Gradle plugin automatically,
     // no literal needed.
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+    // Jackson 3's Kotlin module (auto-registered by Boot when present): maps
+    // Kotlin constructors and null-safety, so a request body missing a
+    // required property is reported as a clean deserialization error. BOM-managed,
+    // no version literal (AD-22).
+    implementation("tools.jackson.module:jackson-module-kotlin")
     implementation("org.flywaydb:flyway-core")
     // Boot 4 split spring-boot-autoconfigure into per-module artifacts; Flyway's
     // auto-configuration now lives in this dedicated module and is not pulled in by
@@ -107,6 +112,13 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    // Show why a test failed in the build output itself (local and CI), not
+    // only in the HTML report.
+    testLogging {
+        events("failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStackTraces = true
+    }
 }
 
 tasks.named<BootRun>("bootRun") {

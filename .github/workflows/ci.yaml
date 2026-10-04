@@ -41,6 +41,19 @@ jobs:
       - name: Build
         run: ./gradlew build --build-cache
 
+      # Proves the format/lint gate is live: a planted violation must fail
+      # `spotlessCheck`. Guards against a Spotless upgrade or config change
+      # silently dropping enforcement while the clean tree still passes.
+      - name: Lint gate rejects a violation
+        run: |
+          probe=src/main/kotlin/com/hl/service/LintProbe.kt
+          printf 'package com.hl.service\nimport java.util.*\nclass LintProbe  {  val x=1 }\n' > "$probe"
+          trap 'rm -f "$probe"' EXIT
+          if ./gradlew spotlessCheck -q; then
+            echo "spotlessCheck passed on a planted violation; the lint gate is not enforcing" >&2
+            exit 1
+          fi
+
   publish:
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

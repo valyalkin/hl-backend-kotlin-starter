@@ -6,7 +6,10 @@ import com.hl.service.error.SystemException
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
+import org.springframework.dao.QueryTimeoutException
 import org.springframework.data.redis.RedisConnectionFailureException
+import org.springframework.data.redis.RedisSystemException
+import org.springframework.data.redis.serializer.SerializationException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
@@ -28,17 +31,14 @@ import java.net.URI
  * exception -- as an RFC 7807 `application/problem+json` body with `code`,
  * `traceId`, and `details` extension members.
  *
- * Extends [ResponseEntityExceptionHandler] rather than a bare
- * `@RestControllerAdvice` class so a future story can override
- * `handleExceptionInternal` to give MVC framework-raised exceptions
- * (malformed body, unsupported media type, etc.) the same `code`/`traceId`/
- * `details` treatment as the five handlers below. That override does not
- * exist yet: today, a framework exception is handled by the superclass's
- * own more-specific inherited handlers and comes back as a bare
- * `ProblemDetail` with none of these extension members. Only the base-class
- * choice is in place; only the five `@ExceptionHandler` methods below --
- * which take priority over any inherited handling for their exact exception
- * types -- add `code`/`traceId`/`details`.
+ * Extends [ResponseEntityExceptionHandler] so MVC framework-raised
+ * exceptions (malformed body, non-UUID path segment, unsupported media type,
+ * unknown path, etc.) get the same `code`/`traceId` treatment: the
+ * superclass's own handlers still choose the status and `ProblemDetail`, and
+ * [handleExceptionInternal] adds the extension members. Their `code` is
+ * derived from the status: 404 `NOT_FOUND`, other 4xx `BUSINESS_ERROR`,
+ * 5xx `SYSTEM_ERROR` (the AD-11 type-level codes); validation failures keep
+ * `VALIDATION_ERROR` via [handleMethodArgumentNotValid].
  */
 @RestControllerAdvice
 class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
@@ -60,21 +60,26 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         request: HttpServletRequest,
     ): ResponseEntity<Any> = respondAsSystemFailure(ex, request, ex.details)
 
-    // Not caught by handleUnexpected below despite RedisConnectionFailureException
-    // not being an AppException subtype: Spring's ExceptionHandlerMethodResolver
+    // Not caught by handleUnexpected below despite these Redis exceptions
+    // not being AppException subtypes: Spring's ExceptionHandlerMethodResolver
     // picks the most specific declared exception type for the thrown exception
     // (ExceptionDepthComparator), independent of where either method is declared
     // in this class, so this handler always wins over handleUnexpected's
-    // `Exception::class` for this exception type.
-    @ExceptionHandler(RedisConnectionFailureException::class)
-    fun handleRedisConnectionFailure(
-        ex: RedisConnectionFailureException,
+    // `Exception::class` for these exception types.
+    @ExceptionHandler(
+        RedisConnectionFailureException::class,
+        RedisSystemException::class,
+        QueryTimeoutException::class,
+        SerializationException::class,
+    )
+    fun handleRedisFailure(
+        ex: Exception,
         request: HttpServletRequest,
     ): ResponseEntity<Any> = respondAsSystemFailure(ex, request)
 
     /**
-     * Shared by [handleSystem] and [handleRedisConnectionFailure]: a Redis
-     * connection failure is a system failure, not just the `SystemException`
+     * Shared by [handleSystem] and [handleRedisFailure]: a Redis
+     * failure (connection, timeout, serialization) is a system failure, not just the `SystemException`
      * class itself (epic's documented "propagates Redis failures as
      * SystemException" contract, Story 2.8, AD-13), so both render identically
      * -- same 500/SYSTEM_ERROR shape, same server-side error log correlated by
@@ -143,6 +148,29 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         )
     }
 
+    override fun handleExceptionInternal(
+        ex: Exception,
+        body: Any?,
+        headers: HttpHeaders,
+        statusCode: HttpStatusCode,
+        request: WebRequest,
+    ): ResponseEntity<Any>? {
+        val response = super.handleExceptionInternal(ex, body, headers, statusCode, request)
+        val problem = response?.body as? ProblemDetail ?: return response
+        if (problem.properties?.containsKey("code") != true) {
+            problem.setProperty("code", frameworkErrorCode(statusCode))
+            problem.setProperty("traceId", currentTraceId())
+        }
+        return response
+    }
+
+    private fun frameworkErrorCode(status: HttpStatusCode): String =
+        when {
+            status.value() == HttpStatus.NOT_FOUND.value() -> "NOT_FOUND"
+            status.is4xxClientError -> "BUSINESS_ERROR"
+            else -> "SYSTEM_ERROR"
+        }
+
     private fun respond(
         status: HttpStatus,
         code: String,
@@ -158,7 +186,9 @@ class GlobalExceptionHandler : ResponseEntityExceptionHandler() {
         val detail = ex.message ?: ex.javaClass.simpleName
         val problem = ProblemDetail.forStatusAndDetail(status, detail)
         problem.type = URI.create("about:blank")
-        problem.instance = URI.create(request.requestURI)
+        // A request path outside java.net.URI's grammar must not turn error
+        // rendering itself into an unhandled 500; omit `instance` instead.
+        problem.instance = runCatching { URI.create(request.requestURI) }.getOrNull()
         problem.setProperty("code", code)
         problem.setProperty("traceId", traceId)
         if (details.isNotEmpty()) {
