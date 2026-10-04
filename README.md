@@ -431,3 +431,56 @@ the buildpack's own `BPL_JVM_*` knobs (e.g. the `-e BPL_JVM_HEAD_ROOM=10` in
 the `docker run` example above, plus `BPL_JVM_THREAD_COUNT`,
 `BPL_JVM_LOADED_CLASS_COUNT`) that feed the calculator rather than bypassing
 it.
+
+### Runtime contract check
+
+The image is the interface to the separate charts repository, so its
+contract -- framework-default probe paths, non-root, environment-only
+configuration, clean SIGTERM -- is checked locally with Docker alone; no
+cluster is needed (Story 4.4). With the Compose stack up
+(`docker compose up -d`) and the image built (`./gradlew bootBuildImage`):
+
+```sh
+docker run -d --name hl-contract -p 8080:8080 \
+  --add-host=host.docker.internal:host-gateway \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/hl_service \
+  -e SPRING_DATASOURCE_USERNAME=hl_service \
+  -e SPRING_DATASOURCE_PASSWORD=hl_service \
+  -e SPRING_DATA_REDIS_HOST=host.docker.internal \
+  hl-backend-kotlin-starter:0.0.1-SNAPSHOT
+
+curl http://localhost:8080/actuator/health/liveness    # {"status":"UP"}
+curl http://localhost:8080/actuator/health/readiness   # {"status":"UP"}
+docker inspect hl-contract --format '{{.Config.User}}' # 1002:1001, not root
+docker top hl-contract -o uid,comm                     # UID 1002, java
+
+docker kill -s SIGTERM hl-contract
+docker wait hl-contract                                # 143
+docker rm hl-contract
+```
+
+- **Probes:** liveness and readiness answer at the Spring Boot default
+  `/actuator/health/liveness` and `/actuator/health/readiness`, with no path
+  overrides.
+- **Environment-only config:** the container above was given nothing but the
+  four `-e` variables.
+- **Non-root:** the image's user is `1002:1001` and the `java` process runs as
+  UID 1002. The tiny runtime image has no shell or `id`, so use
+  `docker inspect`/`docker top` as shown rather than `docker exec`.
+- **SIGTERM:** the JVM is PID 1 and receives the signal; the logs show Boot's
+  graceful shutdown (`GracefulShutdown`, then the EntityManagerFactory and
+  Hikari pool closing) and the container exits with code **143**
+  (128 + SIGTERM), the normal JVM exit status for a handled SIGTERM, not a
+  crash. With no in-flight requests the exit takes well under a second; with
+  requests in flight it is bounded by
+  `SPRING_LIFECYCLE_TIMEOUT_PER_SHUTDOWN_PHASE` (30 s by default, see
+  [Shutdown](#shutdown)), so keep Kubernetes'
+  `terminationGracePeriodSeconds` above that.
+- **Startup:** on a development laptop (Apple Silicon, Docker Desktop) the
+  container reached readiness in about 4 s from `docker run` (Spring's own
+  "Started ... in" log line reported about 2.9 s), well inside the ~10 s
+  target. Re-measure on your own hardware by timing the readiness `curl` loop
+  after `docker run`.
+
+An actual cluster deployment -- manifests, Helm values, secrets, ingress,
+`imagePullSecret` -- is the charts repository's concern, not this check's.
