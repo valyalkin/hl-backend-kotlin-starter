@@ -60,6 +60,29 @@ Two things are deliberately **not** parameters:
   under it (see [Package layout](#package-layout)) are invariant and are
   never renamed.
 
+### Walkthrough: from clone to a working service
+
+Starting from a fresh clone, change only the four parameters above -- no
+source file under `src/main/kotlin` or `src/test` is touched -- then:
+
+```sh
+./gradlew build            # format check, Unit and Integration Tests: green
+docker compose up -d
+./gradlew bootRun          # readiness UP on your SERVER_PORT / server.port
+./gradlew bootBuildImage   # image named after rootProject.name
+```
+
+Pushing to `main` of a repository named after the service builds, tests and
+publishes `ghcr.io/<owner>/<repo>` (see
+[Continuous integration](#continuous-integration)); no workflow edit is
+needed. This path was exercised end to end on a copy of the Starter renamed
+to `orders-service` (database `orders`, port 8085): the build passed, the
+service reported readiness on 8085 with the Flyway-created `widgets` table in
+the `orders` database, and the image came out as `orders-service`. The final
+publish-on-push step depends on the new GitHub repository and was not part of
+that dry run. Removing the Example Slice afterward is a separate step (see
+[Remove the Example Slice](#remove-the-example-slice)).
+
 ### No generator in v1
 
 No generator, rename script, or scaffolding automation ships in v1, and none
