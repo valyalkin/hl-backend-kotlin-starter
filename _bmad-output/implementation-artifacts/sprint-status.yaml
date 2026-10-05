@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 09-09-2026 12:00
-last_updated: 10-04-2026 23:00
+last_updated: 10-05-2026 09:00
 project: hl-backend-kotlin-starter
 project_key: NOKEY
 tracking_system: file-system
@@ -74,11 +74,11 @@ development_status:
   4-4-kubernetes-runtime-contract-verified-locally: done
   epic-4-retrospective: optional
 
-  epic-5: in-progress
-  5-1-the-four-parameters-each-with-one-documented-home: review
-  5-2-generator-explicitly-deferred-seam-documented: review
-  5-3-changing-only-the-four-parameters-yields-a-working-service: review
-  5-4-inactive-fail-safe-oauth2-resource-server-auth-seam: review
-  5-5-auth-seam-documentation: review
-  5-6-readme-covers-the-five-essential-tasks: review
+  epic-5: done
+  5-1-the-four-parameters-each-with-one-documented-home: done
+  5-2-generator-explicitly-deferred-seam-documented: done
+  5-3-changing-only-the-four-parameters-yields-a-working-service: done
+  5-4-inactive-fail-safe-oauth2-resource-server-auth-seam: done
+  5-5-auth-seam-documentation: done
+  5-6-readme-covers-the-five-essential-tasks: done
   epic-5-retrospective: optional
